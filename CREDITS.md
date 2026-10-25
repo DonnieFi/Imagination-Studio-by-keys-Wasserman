@@ -272,7 +272,9 @@ Phosphene publishes. (Apache-2.0.)
 lives in, and the practice of reaching the M5 tensor units from `mx.fast.metal_kernel` that the int8 kernels
 are built on (`kernels/qwen/dense/v1/lane_qmm.py`). This pack pins TensorFold 0.6.5 with three commits on top.
 (Apache-2.0.) Since 3.3.0 the DGX Spark's music engine is built on the **TensorFold 1.1.5** release (its Zig + CUDA
-runtime, build and loaders; the music3 family on top is this pack's).
+runtime, build and loaders; the music3 family on top is this pack's), and since 3.3.1 the Mac's Metal music engine
+(`music3-metal-115`) and the Mac's Metal Bolt engine (`bolt-metal-115`, `libbolt.dylib` on TensorFold's Bolt lane
+backend) are too.
 
 ## Sol-Engine, Sol-Attn and Sol-H3: NVIDIA Research
 

@@ -295,7 +295,7 @@ Rules:
   must not hold the updater or the render scripts). `BOLT_BACKEND=cuda|metal|llamacpp|external`: `cuda` is Mia's
   recipe (MiaAI-Lab/Nemotron-3.5-Bolt-TensorFold-DGX-Spark, MIT, TensorFold 46a08c18 + patches), installed by
   `spark/build-bolt.sh` into `$PREFIX/bolt`, never run in Docker; `metal` is TensorFold's Metal port (branch
-  `nemotron-bolt-metal`, same command line) when built into `$PREFIX/bolt-metal`; `llamacpp` only when set (a Mac may
+  `bolt-metal-115` on TensorFold 1.1.5 since 3.3.1, same command line), installed into `$PREFIX/bolt-metal` by `scripts/setup-bolt.sh`; `llamacpp` only when set (a Mac may
   run Bolt in its own llama.cpp service). The engine serves when the brains' address is empty or `studio:bolt`; a
   typed address stays external. Weights: NVIDIA's checkpoint a326822a and LiLiCorr drafter 4c6a5613
   (`scripts/setup-bolt.sh`, `--bolt`), OpenMDW 1.1. `NEED_GB`, `RESIDENT_GB` and `MAC_PEAK_GB` are measurements:

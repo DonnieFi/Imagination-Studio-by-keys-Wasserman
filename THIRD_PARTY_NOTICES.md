@@ -169,7 +169,8 @@ contributors), from the carrier image or built from source into `$PREFIX/music3`
 ## TensorFold music3 (Metal)
 
 On an M5 or later Mac the song runs on TensorFold's Metal port of MiniMax Music 3 (drowzeys/TensorFold, branch
-`upstream/music3-metal`, commit 8c9559da, Apache-2.0; pull request #987 to ashhart/TensorFold), built from source into
+`music3-metal-115`, commit 91877e79, Apache-2.0: the code of pull request #987 to ashhart/TensorFold on the TensorFold 1.1.5
+release since 3.3.1), built from source into
 `$PREFIX/music3` by `scripts/build-music3-metal.sh` (Zig 0.17.0, MIT, fetched from ziglang.org).
 
 ## TensorFold music3-mlx

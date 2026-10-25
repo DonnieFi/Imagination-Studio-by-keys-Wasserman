@@ -10,7 +10,8 @@ machine's queue needs its memory, before that job. Four backends, ``BOLT_BACKEND
   Nemotron-3.5-Bolt-TensorFold-DGX-Spark recipe on TensorFold 46a08c18 and its patches; ``spark/build-bolt.sh``
   puts it in ``$PREFIX/bolt``. No Docker at run time.
 - ``metal`` (a Mac, the default there when built): TensorFold's Metal port of the same engine (fork branch
-  ``nemotron-bolt-metal``, not released yet), the same ``tensorfold-native serve`` command line.
+  ``bolt-metal-115`` on TensorFold 1.1.5, a release asset installed by ``scripts/setup-bolt.sh``), the same
+  ``tensorfold-native serve`` command line.
 - ``llamacpp`` (a Mac, when ``BOLT_BACKEND`` says so): llama.cpp's ``llama-server`` with NVIDIA's GGUF, until the
   Metal engine lands. Never chosen by itself (a Mac may already run Bolt in a llama.cpp service of its own).
 - ``external``: a server the Studio does not manage (the address in Settings → Connections), as before.
@@ -594,7 +595,7 @@ class Cuda(Engine):
 
 
 class Metal(Cuda):
-    """TensorFold's Metal port of the Bolt engine on a Mac (fork branch ``nemotron-bolt-metal``, the same
+    """TensorFold's Metal port of the Bolt engine on a Mac (fork branch ``bolt-metal-115`` on TensorFold 1.1.5, the same
     ``tensorfold-native serve`` command line), from ``$PREFIX/bolt-metal``. Not released yet: until it is built there,
     a Mac runs Bolt through llama.cpp (``Llamacpp``, BOLT_BACKEND=llamacpp). Swapping it in is building it into that
     folder (or naming it with BOLT_BIN) and setting BOLT_BACKEND=metal, or leaving it unset: nothing else changes."""
@@ -605,7 +606,7 @@ class Metal(Cuda):
 
     def __init__(self) -> None:
         super().__init__()
-        # the Metal build (nemotron-bolt-metal b4edaea5) has no vision tower and its server refuses the --vision-* flags
+        # the Metal build (bolt-metal-115 be300c4d, as nemotron-bolt-metal b4edaea5 before it) has no vision tower; b4edaea5's server refused the --vision-* flags
         # ("unrecognized arguments: --vision-max-videos": the fresh 3.1.0 install's first load); BOLT_VISION=1 asks anyway
         self.vision = os.environ.get("BOLT_VISION") == "1"
 
@@ -615,7 +616,7 @@ class Metal(Cuda):
         return super().present()
 
     def build_hint(self) -> str:
-        return "TensorFold's nemotron-bolt-metal branch, built into $PREFIX/bolt-metal (not released yet)"
+        return "bash scripts/setup-bolt.sh (TensorFold's bolt-metal-115 engine, a release download into $PREFIX/bolt-metal)"
 
     def setup_hint(self) -> str:
         return "bash oneshot-setup.sh --bolt"
