@@ -188,7 +188,9 @@ autoregressive model that writes the acoustic tokens, a DiT that renders them, a
 Comfy-Org's repackaging of MiniMax's release (Comfy-Org/MiniMax-Music-3), under the **MiniMax-Music3 Community
 License**: commercial use is allowed, a commercial product shows "MiniMax-Music3" in its interface, a company above
 US$20 million of yearly revenue needs MiniMax's written authorisation, and a hosted service keeps safeguards against
-misuse. On a DGX Spark it runs on **ComfyUI**'s own MiniMax Music 3 nodes and blueprint (Comfy Org, GPL-3.0); on a Mac
+misuse. On a DGX Spark it runs on TensorFold's native CUDA port (`music3-cuda-115` in the drowzeys/TensorFold fork,
+on the **TensorFold 1.1.5** release of Ash Hart and the TensorFold contributors since 3.3.0), else on **ComfyUI**'s own
+MiniMax Music 3 nodes and blueprint (Comfy Org, GPL-3.0); on a Mac
 on TensorFold's native Metal port (Zig and Metal, on an M5 or later) or its MLX port (`music3-mlx` in the
 drowzeys/TensorFold fork), both following ComfyUI's reference code. The
 pack ships no weights. **MiniMax-Music3.**
@@ -269,7 +271,8 @@ Phosphene publishes. (Apache-2.0.)
 **Ash Hart** (ashhart) and the TensorFold contributors — **TensorFold**: the family and kernel structure this
 lives in, and the practice of reaching the M5 tensor units from `mx.fast.metal_kernel` that the int8 kernels
 are built on (`kernels/qwen/dense/v1/lane_qmm.py`). This pack pins TensorFold 0.6.5 with three commits on top.
-(Apache-2.0.)
+(Apache-2.0.) Since 3.3.0 the DGX Spark's music engine is built on the **TensorFold 1.1.5** release (its Zig + CUDA
+runtime, build and loaders; the music3 family on top is this pack's).
 
 ## Sol-Engine, Sol-Attn and Sol-H3: NVIDIA Research
 
