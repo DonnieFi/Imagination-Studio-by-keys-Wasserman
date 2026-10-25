@@ -175,7 +175,10 @@ that release. The weights are under the MiniMax H3 Community License; this pack 
 (3B active per token) on a Qwen3.5 backbone with a codebook-MTP audio decoder and the Fish S2 codec, with up to 16
 speakers in one text, voice cloning from a short clip, and direction tags. The local ports (TensorFold CUDA on the DGX
 Spark, TensorFold/MLX on the Mac) follow Fish Audio's and the SGLang-Omni team's reference implementation
-(Apache-2.0). Fish Audio Community License v1.0. **Built with Fish Audio.**
+(Apache-2.0). Fish Audio Community License v1.0. **Built with Fish Audio.** A take that goes quiet partway (a Drama 3
+stall: silence or a flat hum after the first sentence or two) is drawn again with the next seed; the check follows the
+opt-in silence guard of TensorFold's Drama serve (`--silence-mid-s`, `--silence-redraws`) by **Ash Hart** and the
+TensorFold contributors.
 
 ## The music model: MiniMax (MiniMax-Music3)
 
