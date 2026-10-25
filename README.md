@@ -166,13 +166,41 @@ Full recipes, every option and the measured memory of each job: [Install, and th
 design and build the studio in collaboration with Keys, made Wasserman's Filmmaker Suite, and shaped the production side (Slate, the Sharp Spec, Motion Previs). See
 [Big credit: Sam Wasserman and Wasserman Productions](#big-credit-sam-wasserman-and-wasserman-productions-wassermanproductionscom), below the release notes, and [CREDITS.md](CREDITS.md).*
 
-**3.2.0** · Apple-silicon Macs (measured on a Mac Studio M5 Ultra 256 GB), the NVIDIA DGX Spark, and the NVIDIA RTX Pro
+**3.3.0** · Apple-silicon Macs (measured on a Mac Studio M5 Ultra 256 GB), the NVIDIA DGX Spark, and the NVIDIA RTX Pro
 6000 (96 GB) ·
 [TensorFold](https://github.com/ashhart/TensorFold) **0.6.5** + two families, and TensorFold **1.0**'s native Zig
-runtime for FastH3 on Metal and on CUDA:
+runtime for FastH3 on Metal and on CUDA, TensorFold **1.1.5** for the DGX Spark's music engine:
 **Qwen 2.1 Turbo**, **Qwen 2.1 Full**, **FLUX3-K Fast** and **FLUX3-K Full** (text to image, and Edit a picture) · **MOSS-Image** (text to image, DGX Spark) · **MiniMax H3**
 (video with sound) · **Fish Audio Drama 3** (Voice) · **MiniMax-Music3** (Music: songs with sung vocals) · int8 kernels on the M5 tensor units and on the GB10's tensor
 cores · a 2x video decoder for 2K finals on the Mac
+
+## New in 3.3.0 (2026-10-25)
+
+3.3.0 moves the studio's engines onto **TensorFold 1.1.5** where that is a safe, measured step, and says why the rest
+stay where they are. Every engine was put side by side with the one it would replace on the same machine and weights
+(one engine at a time, spare ports, a memory guard). Update with `git pull && bash oneshot-setup.sh --upgrade`, then
+restart the app; a DGX Spark takes the new music engine from the carrier `keys-tensorfold-studio:3.3.0` (checksummed).
+
+- **Music on a DGX Spark runs on TensorFold 1.1.5.** The music3 family (`music3-cuda-115`, 5505dbfa) is the same code
+  on the 1.1.5 runtime, build and loaders. Measured on one GB10, a 30 s int8 song, seed 7, two rounds each: **the same
+  song, byte for byte** (identical WAV), the same making time (61.0 to 62.5 s against 60.9 to 63.6 s) and the same peak
+  (16.46 GB), and the engine is ready **2.6x sooner** (12.5 to 16.2 s against 32.6 to 69.8 s), so the first song after
+  an idle unload starts sooner.
+- **Kept, with the measurements** (DGX Spark, same weights, alternating rounds):
+  - **Bolt (the brain) on CUDA** stays on MiaAI-Lab's recipe (TensorFold 1.0.12 base with `libbolt.so` and the LiLiCorr
+    drafter inside it). TensorFold 1.1.5's own Bolt, which drafts with its MTP head (it refuses a separate drafter),
+    decodes 36.5 / 36.9 / 50.2 tokens/s (chat, a 600-token plan, an edit) and 115 with four streams, against the
+    studio engine's **56.1 / 68.8 / 118.9 and 153**. 1.1.5 is first to the first token (75 to 135 ms against 130 to
+    230 ms), not enough to trade for half the speed.
+  - **Drama 3 (Voice) on CUDA** stays on the studio's `drama3-cuda` engine: 33.9 frames/s, a long line in 14.8 s.
+    TensorFold 1.1.5's Drama serve is 0.77 real-time factor at best (128-row prefill and the silence guard; 15.5 s for
+    the long line, though it streams the first audio in 0.2 s), and in its default setting the long line runs on into
+    non-speech (32.7 s of audio for a 23 s line). 1.1.5 changes Drama only on Metal.
+  - **The native FastH3 engine** (Metal and CUDA, int8) stays on its TensorFold 1.0.4 base: TensorFold 1.1.5's H3 family
+    is a bf16 rewrite of the same files, so the studio's int8 kernels would be a port, not a rebase, for no change in
+    what 1.1.5 offers H3.
+  - **The Mac's MLX engines** (H3, Qwen-Image, the Drama 3 and Music 3 MLX ports) stay on TensorFold 0.6.5: 1.1.5 has no
+    Python or MLX package.
 
 ## New in 3.2.0 (2026-10-22)
 
@@ -541,7 +569,7 @@ unless it says otherwise.
   seams. Details in [Music](#music-minimax-music-3).
 - **Music on a DGX Spark: TensorFold's CUDA engine for MiniMax Music 3 (MiniMax-Music3).** The Music tab on a Spark now
   runs `music3-generate`, TensorFold's native CUDA port (branch `music3-cuda`, 6b714531: Zig + CUDA, no Python at run
-  time), wherever it is built and the weights are there; otherwise it falls back to ComfyUI's nodes as in 2.9.0.
+  time; since 3.3.0 the same family on TensorFold 1.1.5, branch `music3-cuda-115`, 5505dbfa), wherever it is built and the weights are there; otherwise it falls back to ComfyUI's nodes as in 2.9.0.
   `MUSIC3_BACKEND=cuda|comfy` chooses; the tab's state says which route runs and, after a fall-back, why.
   - **int8 weights by default**, made on the GPU as the engine loads (no cache file): the autoregressive model, its
     head and the depth decoder at 8 bits. `MUSIC3_WEIGHTS=bf16` runs the checkpoint's own weights. It reads
@@ -2794,8 +2822,9 @@ scores over six same-seed songs stayed within their noise. Measured through the 
 10.1 s, 20.9 GB. `MUSIC3_QUANT=none` runs the bf16 weights.
 
 **On a DGX Spark with TensorFold's CUDA engine** (since 2.9.1, the default where it is built) the song runs on
-`music3-generate --serve 1` (fork branch `music3-cuda`, commit 6b714531; `$PREFIX/music3/bin`, `MUSIC3_CUDA_BIN` names
-another), the Mac engine's protocol and lifecycle: loaded on the first song (about 37 s; int8 weights are made on the
+`music3-generate --serve 1` (fork branch `music3-cuda-115`, commit 5505dbfa: the family on TensorFold 1.1.5 since 3.3.0;
+`$PREFIX/music3/bin`, `MUSIC3_CUDA_BIN` names another), the Mac engine's protocol and lifecycle: loaded on the first song
+(about 13 to 16 s on the 1.1.5 build, about 37 s before it; int8 weights are made on the
 GPU as it loads, `MUSIC3_WEIGHTS=bf16` for the checkpoint's own), holding the GPU lock while loaded, unloaded after
 `MUSIC3_IDLE_S` and before any other job, under the kill-guard (`MUSIC3_GUARD_GB`, 8). A studio ComfyUI that holds
 models is stopped before it loads. `bash oneshot-setup-spark.sh --music` downloads the weights and installs the engine
@@ -3967,8 +3996,8 @@ videos at once, and sound by ear (the figures above are measurements).
 ### GHCR prebuilt carrier
 
 ```bash
-docker pull ghcr.io/drowzeys/keys-tensorfold-studio:2.9.1
-docker run --rm -v "$PWD":/out ghcr.io/drowzeys/keys-tensorfold-studio:2.9.1 cp -a /payload/. /out/payload/
+docker pull ghcr.io/drowzeys/keys-tensorfold-studio:3.3.0
+docker run --rm -v "$PWD":/out ghcr.io/drowzeys/keys-tensorfold-studio:3.3.0 cp -a /payload/. /out/payload/
 ```
 
 One image for both builds. For a Mac it holds the TensorFold wheel, `requirements.lock`, the render scripts, the
@@ -3976,7 +4005,7 @@ prebuilt native FastH3 engine (`zig-engine/tf-h3-dit`, built for Apple Silicon a
 For a DGX Spark it holds the prebuilt CUDA engine (`spark-engine/libtf_h3.so`, GB10, aarch64; since 2.8.0 the
 `h3-cuda-lora` build at `1f7ecc75`, with LoRA support, so a Spark install no longer builds it from source), which
 `spark/build-engine.sh` takes when Docker is there and otherwise builds from source; since 2.9.1 also MiniMax Music 3's
-`spark-music3/music3-generate` (`music3-cuda` at 6b714531), which `spark/build-music3.sh` takes the same way, and
+`spark-music3/music3-generate` (`music3-cuda` at 6b714531; from 3.3.0 `music3-cuda-115` at 5505dbfa, on TensorFold 1.1.5), which `spark/build-music3.sh` takes the same way, and
 from 3.1.0 Fish Audio Drama 3's `spark-drama3/` (`drama3-generate` and `libtensorfold_drama3.so`, `drama3-cuda` at
 81173e6c, the engine only: no codec, no weights), which `spark/build-drama3.sh` takes the same way. The Mac's
 Drama 3 and Music engines are not in it: their installers clone TensorFold at the pinned commits. **It is not a runtime**: neither
