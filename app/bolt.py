@@ -616,7 +616,7 @@ class Metal(Cuda):
         return super().present()
 
     def build_hint(self) -> str:
-        return "bash scripts/setup-bolt.sh (TensorFold's bolt-metal-115 engine, a release download into $PREFIX/bolt-metal)"
+        return "scripts/setup-bolt.sh (TensorFold's bolt-metal-115 engine, a release download into $PREFIX/bolt-metal)"
 
     def setup_hint(self) -> str:
         return "bash oneshot-setup.sh --bolt"
