@@ -280,6 +280,7 @@ function setAbout() { if (!SET.about && typeof updRequest === "function") { SET.
       "Stability AI: Stable Audio Open · Ho Kei Cheng et al.: MMAudio · kijai: ComfyUI-MMAudio (sound effects and foley)",
       "Ash Hart and the TensorFold contributors: TensorFold (the DGX Spark's music engine on the 1.1.5 release)",
       "NVIDIA: Nemotron 3.5 Bolt and its LiLiCorr drafter (the Studio's brain engine) · MiaAI-Lab: the Bolt TensorFold recipe for the DGX Spark",
+      "AutoRL Generation: Echo-Infinity (Yuxuan Bian, Nan Duan, Qiang Xu et al., CUHK and Joy Future Academy, JD) for the idea · Video Rebirth: HyperFlow-Infinity, the loop design and adapted code (Apache-2.0) · NVIDIA: Cosmos3-Edge, the vision brain, on TensorFold (Ash Hart)",
       "antirez: h3.c · RobZombAI: H3MLX · mrbizarro: minimax-h3-mlx (Phosphene) · Filip Strand and the mflux contributors · felix-ab: flux3-mlx",
       "comfyanonymous, Comfy Org and the ComfyUI contributors: ComfyUI, and Comfy Org's MOSS-Image and MiniMax-Music-3 files · Apple: MLX · mlx-vlm · Qwen team: Qwen3-VL · VisualInference",
       "NVIDIA Research: Sol · FastVideo (Hao AI Lab): FastH3 · LightX2V (ModelTC) · larryvrh · TaoLiveAIGC · Viggle · speach1sdef178 · rookiestar28 · ddalcu · Kijai · DeepBeepMeep",
@@ -297,6 +298,7 @@ function setAbout() { if (!SET.about && typeof updRequest === "function") { SET.
       "Qwen-Image-2.1: Qwen Research License (non-commercial)", "MiniMax H3: MiniMax H3 Community License (territory limits)", "MiniMax-Music3: its licence asks for its name in a commercial UI",
       "FLUX3-K: FLUX Kommunity License", "MOSS-Image: Apache 2.0 (commercial use allowed)", "Fish Audio Drama 3: Fish Audio Community License v1.0; a hosted voice service needs Fish's own licence",
       "NVIDIA Nemotron 3.5 Bolt: OpenMDW License 1.1 (commercial use allowed; a copy keeps the licence and NVIDIA's notices) · its DGX Spark engine: MiaAI-Lab's recipe, MIT, on TensorFold",
+      "NVIDIA Cosmos3-Edge (AutoRL's vision brain): OpenMDW License 1.1 · HyperFlow-Infinity (Video Rebirth): Apache 2.0, its licence in LICENSES/",
       "Stable Audio Open 1.0: Stability AI Community License (free under US$1 million of yearly revenue)", "MMAudio's weights: CC-BY-NC 4.0, non-commercial",
       "HyperFrames: Apache 2.0 · GSAP: its no-charge Standard License (not open source) · musubi-tuner: Apache 2.0 · bitsandbytes: MIT · Tesseract: Mirage's own terms (free below US$1 million of yearly revenue, not for redistribution, usage counts on by default) · Tesseract Converter: MIT",
       "Wasserman's Filmmaker Suite: each app under its own licence, Apache-2.0 (Master Canvas: MIT); the studio ships none of their code but the Slate workflow and the Motion Previs port, each with its NOTICE"].map(t => el("li", {}, t))))]; }

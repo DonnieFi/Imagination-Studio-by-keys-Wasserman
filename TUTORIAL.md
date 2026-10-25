@@ -431,6 +431,24 @@ A LoRA on FastH3 is merged into TensorFold's int8 engine and takes what a clip w
 1376x768 at 10 seconds. A Spark whose engine predates 2.7.1 renders LoRA clips on ComfyUI's own blocks, and refuses
 them above 1280x736 at 124 frames.
 
+## 13.5 AutoRL Generation: a story that keeps going
+
+1. **Production → AutoRL Generation → New run.** Give it a name and a seed: the world, where the story starts, and the
+   characters, each with a look (face, age, hair, clothes: it is repeated in every segment) and, if you have one, a
+   reference picture from the Library. Or choose *Seed from: a Slate film's bible*.
+2. **Settings.** A visual style, your direction for the Director, the output and quality you already use (480p with
+   FastH3 8 passes is a good first run), seconds a segment, how many segments (0 runs until you stop it), and whether a
+   segment that fails the check gets a retake.
+3. **Create and start.** Each segment shows what the Director asked for, what the watcher saw, how it ends, any
+   continuity problem and the QA verdict. *The film so far* plays the joined film; open *Scene graph* to see what the
+   film remembers.
+4. **Steer it.** *Pause* stops after the segment at work, *Resume* carries on, and settings saved while it runs apply
+   from the next segment. *Branch from here* under a segment starts a second film that shares everything up to it and
+   follows your new direction.
+
+The watcher is NVIDIA Cosmos3-Edge by default: the panel's *Vision brain* says whether it is installed here, and takes
+another vision server's address, or none (then the QA gate's own eyes watch, on one frame sheet).
+
 ## 14. Without the app
 
 ```bash

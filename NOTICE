@@ -62,6 +62,13 @@ under app/motion_templates/. Motion Previs Studio was developed and created by S
 and Wasserman.ai; its NOTICE is kept at LICENSES/Motion-Previs-Studio-NOTICE. Third-party notices for that tab
 (MediaPipe, Depth Anything, OpenCV, ONNX Runtime) are in THIRD_PARTY_NOTICES.md.
 
+AutoRL Generation (app/autorl.py, app/static/autorl.js) adapts the loop design and parts of the scene-graph memory and
+Director prompts of HyperFlow-Infinity (https://github.com/Video-Rebirth/hyperflow-infinity), Copyright Video Rebirth,
+licensed under the Apache License 2.0 (LICENSES/HyperFlow-Infinity-LICENSE); the adapted parts were changed for this
+product. The idea of an endless self-directing video is Echo-Infinity's (Yuxuan Bian, Nan Duan, Qiang Xu et al., CUHK and Joy Future Academy, JD).
+NVIDIA Cosmos3-Edge, the vision model it watches with by default, is licensed under the OpenMDW License Agreement 1.1
+by NVIDIA; this pack ships no Cosmos weights.
+
 The LoRA hub's first preset is the recipe for the Wasserman 80s Horror LoRA, Copyright 2026 Sam Wasserman. Its
 weights are not part of this pack: they are downloaded from his release when a user installs them, as a Model
 Derivative of MiniMax H3 under the MiniMax H3 Community License Agreement. Credit: 80s Horror LoRA by Sam Wasserman

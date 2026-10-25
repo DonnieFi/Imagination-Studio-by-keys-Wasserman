@@ -2518,6 +2518,22 @@ of the app picks a run up where it was. For scripts and agents: `POST /api/slate
 film's brain (Bible tab); cast stills need the Ref2VA model (`--ref2va`); the turnarounds need Turnaround in the LoRA hub and the check needs ffmpeg, and without them
 the run carries on without the turnaround, or with the take counted as not checked.
 
+#### AutoRL Generation: a story that directs itself
+
+The third choice at the top of Production. Give it a story seed (a world, where it starts, characters with a look and
+a reference picture each, a visual style, your direction; or *Seed from a Slate film's bible*) and it keeps going:
+the film's brain writes a short segment, the render queue makes it on this Studio's engines and presets (FastH3 fh4,
+fh8 or fh20, the Sharp Spec, any size, the LoRA hub), the QA gate checks it, and the vision brain watches it (by
+default NVIDIA Cosmos3-Edge on TensorFold, started by the Studio on its own port only while it watches) and writes
+what changed into a scene graph. The next segment continues from the last frame; a new scene opens on the cast's
+pictures where Ref2VA is installed. A segment the Director writes that restages an earlier beat or overstays its scene
+is turned back and written again; identity drift or a failed gate renders it again at the next seed. The film is
+joined every few segments (a one-frame cross-fade where a segment continues, a short dissolve on a new scene). Pause,
+Resume, Stop, and *Branch from here* on any segment (a second run that shares the film up to there and follows new
+direction). Runs live in `~/ImaginationStudio/autorl/`. The idea is Echo-Infinity's; the loop is adapted from Video
+Rebirth's HyperFlow-Infinity (Apache-2.0), without its 8-step adapter. Design, scene-graph schema, API and the plan for
+a latent-tail continuation: [docs/autorl.md](docs/autorl.md).
+
 Not ported from Slate: sequence chunks, alt takes, punch-ups, the tone dial, pickups on a selected span, reference
 and audio analysis, the stills library, compiles for other generators, and its MCP server. The app has no sign-in of
 its own: anyone who can open it can use the brain, so keep it on a network you trust.

@@ -168,6 +168,15 @@ Rules:
   changed in place (`SL_BIBLE` and the `update_*` actions): never add a second one with the same name, the id is what
   shots cast. A slot in bars (`tf.bars`, with `tf.song` on the project) sets the clip's frames through
   `shot_frames`; the tempo is the user's. `tests/test_slate_page.py` runs the page code in node: keep it passing.
+- AutoRL Generation (`app/autorl.py`, `app/cosmos.py`, `app/static/autorl.js`, `docs/autorl.md`): every segment is a
+  `video` job of the queue (never a render of its own), opens on the segment before's last frame or, on a new scene,
+  the cast's pictures (never both), and is checked by the QA gate and watched before it joins the film. The Director's
+  rules against repetition, the scene budget and stagnation, and the watcher's two-events-a-segment scene graph, are
+  HyperFlow-Infinity's (Video Rebirth, Apache-2.0): keep the header of `app/autorl.py`, `LICENSES/HyperFlow-Infinity-LICENSE`
+  and the credit to Echo-Infinity for the idea. Do not name the feature after either. The Studio's own Cosmos3-Edge
+  (`studio:cosmos`) runs on its own loopback port with a kill-guard and is unloaded before any other local job
+  (`cosmos.release` at the top of `server.perform`); never point the Studio at a voice agent's Cosmos. The Director's
+  prompt keeps the content rules (general audience, no "no X" lines, no on-screen text): do not loosen them by default.
 - A clip from another machine's app is read through `app/remote.py` (`/api/qa`, `/api/slate/takes`): addresses are
   `http://host:port` only and paths are media files inside that app's folder. Do not widen either.
 - Checking every feature on a running app (a Mac or a DGX Spark): `python3 scripts/studio-check.py` on that machine

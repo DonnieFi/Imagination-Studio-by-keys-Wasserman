@@ -194,10 +194,11 @@ def verdict(text: str) -> dict | None:
     return parsed if isinstance(parsed, dict) and isinstance(parsed.get("pass"), bool) else None
 
 
-def local_vision(picture: Path, endpoint: str, model: str) -> str:
-    image = "data:image/jpeg;base64," + base64.b64encode(picture.read_bytes()).decode()
+def local_vision(picture: Path, endpoint: str, model: str, prompt: str = VISION) -> str:
+    # a PNG sheet goes as PNG: a TensorFold vision server without libturbojpeg (Cosmos3-Edge, cosmos.py) reads no JPEG
+    image = f"data:image/{'png' if picture.suffix.lower() == '.png' else 'jpeg'};base64," + base64.b64encode(picture.read_bytes()).decode()
     body = json.dumps({"model": model, "temperature": 0, "messages": [{"role": "user", "content": [
-        {"type": "text", "text": VISION}, {"type": "image_url", "image_url": {"url": image}}]}]}).encode()
+        {"type": "text", "text": prompt}, {"type": "image_url", "image_url": {"url": image}}]}]}).encode()
     request = urllib.request.Request(endpoint.rstrip("/") + "/chat/completions", body, {"Content-Type": "application/json"})
     with urllib.request.urlopen(request, timeout=180) as answer:
         return json.loads(answer.read())["choices"][0]["message"]["content"]
@@ -229,8 +230,9 @@ def default_brain() -> dict:
     return agents.default_brain()
 
 
-def look(picture: Path, brain: dict) -> tuple[str, str]:
-    """(answer, who gave it) from the first vision model that answers: the film's brain first, then the others."""
+def look(picture: Path, brain: dict, prompt: str = VISION) -> tuple[str, str]:
+    """(answer, who gave it) from the first vision model that answers: the film's brain first, then the others.
+    ``prompt`` is the gate's own question unless a caller asks another of the same picture (autorl.py's watcher)."""
 
     brain = {**default_brain(), **{key: value for key, value in (brain or {}).items() if value}}
     # a film whose brain is a local model never has its frames sent to a cloud CLI, even when the local one is down
@@ -243,10 +245,10 @@ def look(picture: Path, brain: dict) -> tuple[str, str]:
                 engine = bolt_engine(endpoint)
                 if engine is not None:  # the Studio's Bolt engine: refused at once while a job holds its memory
                     with engine.request(wait=False) as live:
-                        return local_vision(picture, live, model or engine_model()), "local model"
+                        return local_vision(picture, live, model or engine_model(), prompt), "local model"
                 if not endpoint:
                     continue
-                return local_vision(picture, endpoint, model or ""), "local model"
+                return local_vision(picture, endpoint, model or "", prompt), "local model"
             cli = tool(backend)
             if not cli:
                 continue
@@ -255,7 +257,7 @@ def look(picture: Path, brain: dict) -> tuple[str, str]:
                 if backend == "codex":
                     last = Path(scratch) / "last.txt"
                     subprocess.run([cli, "exec", "--skip-git-repo-check", "-i", "sheet.jpg", "--output-last-message", str(last), "-"],
-                                   input=VISION, capture_output=True, text=True, timeout=300, cwd=scratch, env=ENV)
+                                   input=prompt, capture_output=True, text=True, timeout=300, cwd=scratch, env=ENV)
                     if last.is_file() and last.read_text().strip():
                         return last.read_text(), "Codex"
                     tried.append("Codex gave no answer")
@@ -263,7 +265,7 @@ def look(picture: Path, brain: dict) -> tuple[str, str]:
                 # Read only, and only in this scratch folder (Claude Code's blockReadsOutsideWorkingDirectories)
                 done = subprocess.run([cli, "-p", "--output-format", "json", "--tools", "Read", "--permission-mode", "acceptEdits",
                                        "--settings", '{"permissions": {"blockReadsOutsideWorkingDirectories": true}}', "--model", "sonnet"],
-                                      input="Read the image file sheet.jpg in the current folder, then: " + VISION,
+                                      input="Read the image file sheet.jpg in the current folder, then: " + prompt,
                                       capture_output=True, text=True, timeout=300, cwd=scratch, env=ENV)
                 try:
                     parsed = json.loads(done.stdout)
