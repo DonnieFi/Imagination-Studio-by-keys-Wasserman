@@ -166,13 +166,30 @@ Full recipes, every option and the measured memory of each job: [Install, and th
 design and build the studio in collaboration with Keys, made Wasserman's Filmmaker Suite, and shaped the production side (Slate, the Sharp Spec, Motion Previs). See
 [Big credit: Sam Wasserman and Wasserman Productions](#big-credit-sam-wasserman-and-wasserman-productions-wassermanproductionscom), below the release notes, and [CREDITS.md](CREDITS.md).*
 
-**3.3.0** · Apple-silicon Macs (measured on a Mac Studio M5 Ultra 256 GB), the NVIDIA DGX Spark, and the NVIDIA RTX Pro
+**3.3.1** · Apple-silicon Macs (measured on a Mac Studio M5 Ultra 256 GB), the NVIDIA DGX Spark, and the NVIDIA RTX Pro
 6000 (96 GB) ·
 [TensorFold](https://github.com/ashhart/TensorFold) **0.6.5** + two families, and TensorFold **1.0**'s native Zig
-runtime for FastH3 on Metal and on CUDA, TensorFold **1.1.5** for the DGX Spark's music engine:
+runtime for FastH3 on Metal and on CUDA, TensorFold **1.1.5** for the music engines and the Mac's Bolt engine:
 **Qwen 2.1 Turbo**, **Qwen 2.1 Full**, **FLUX3-K Fast** and **FLUX3-K Full** (text to image, and Edit a picture) · **MOSS-Image** (text to image, DGX Spark) · **MiniMax H3**
 (video with sound) · **Fish Audio Drama 3** (Voice) · **MiniMax-Music3** (Music: songs with sung vocals) · int8 kernels on the M5 tensor units and on the GB10's tensor
 cores · a 2x video decoder for 2K finals on the Mac
+
+## New in 3.3.1 (2026-10-25)
+
+3.3.1 moves the Mac's two TensorFold Metal engines onto **TensorFold 1.1.5**, each checked against the engine it
+replaces on a Mac Studio M5 Ultra (same weights, one engine at a time, spare ports, a memory guard). Update with
+`git pull && bash oneshot-setup.sh --upgrade`, then restart the app: on a Mac that has them, `--upgrade` now also
+rebuilds the Metal music engine at the new commit (a few minutes) and downloads the new Metal Bolt engine (5 MB,
+checksummed); it fetches no weights. A DGX Spark has nothing new to install.
+
+- **Music on a Mac (M5 or later) runs on TensorFold 1.1.5.** The music3 Metal family (`music3-metal-115`, 91877e79)
+  is the same code on the 1.1.5 runtime. A 12 s song, seed 7, two rounds each: **the same song, byte for byte**
+  (identical WAV), made in 13.1 s on both.
+- **Bolt (the brain) on a Mac runs on TensorFold 1.1.5.** The Metal Bolt engine (`bolt-metal-115`, be300c4d,
+  `libbolt.dylib` behind TensorFold's Bolt lane backend) with the studio's own settings (four streams, 65,536-token
+  window, 2 GiB prompt cache, LiLiCorr drafts), against `nemotron-bolt-metal` b4edaea5 (TensorFold 1.0.12): **the same
+  replies** (7 of 7 greedy answers identical), first token 66 to 72 ms against 68 to 71 ms, 113 tokens/s on both
+  (109 on a 400-token plan), 27.4 GB resident on both, ready in 7 to 8 s.
 
 ## New in 3.3.0 (2026-10-25)
 
@@ -2791,7 +2808,7 @@ called and the pack ships no weights.
 
 **On a Mac with an M5 or later and TensorFold's Metal engine** (since 2.9.2, the default where it is built) the song
 runs on `music3-generate --serve 1` built for Metal: Zig and Metal, no Python, MLX or PyTorch (fork branch
-`upstream/music3-metal`, commit 8c9559da, the code of TensorFold pull request #987; `$PREFIX/music3/bin`,
+`music3-metal-115`, commit 91877e79 since 3.3.1: the code of TensorFold pull request #987 on TensorFold 1.1.5; `$PREFIX/music3/bin`,
 `MUSIC3_METAL_BIN` names another). It has the CUDA engine's protocol and lifecycle, int8 weights by default
 (`MUSIC3_WEIGHTS=bf16` for the checkpoint's own) and the kill-guard. `bash oneshot-setup.sh --music` builds it
 (`scripts/build-music3-metal.sh`: Zig 0.17 and Xcode's Metal compiler, a few minutes) beside the MLX port. Without

@@ -533,6 +533,15 @@ if [ "$APP" = 1 ] && [ "$MODE" != "--verify" ]; then
 fi
 
 if [ "$UPGRADE" = 1 ]; then
+  # the TensorFold Metal engines this install already has move to this version's pins (no weights are fetched: an
+  # engine is only here when its weights were set up with it)
+  if [ "$MUSIC" = 0 ] && [ -x "$PREFIX/music3/bin/music3-generate" ]; then
+    step "The Metal music engine at this version's commit"
+    PREFIX="$PREFIX" bash "$HERE/scripts/build-music3-metal.sh" || echo "  ! not rebuilt (above): bash scripts/build-music3-metal.sh"
+  fi
+  if [ "$BOLT" = 0 ] && [ -d "$PREFIX/bolt-metal" ]; then
+    PREFIX="$PREFIX" bash "$HERE/scripts/setup-bolt.sh" || echo "  ! the Bolt engine is not fully set up: bash scripts/setup-bolt.sh"
+  fi
   step "Upgraded: $INSTALLED -> $(cat "$PREFIX/VERSION"). Checking the install (restart the app to serve the new pages)"
   exec bash "$HERE/oneshot-setup.sh" --verify $([ "$VIDEO" = 1 ] || echo --image-only) $([ "$GRAPHICS" = 1 ] || echo --no-graphics) $([ "$FINISH" = 1 ] || echo --no-finish)
 fi
