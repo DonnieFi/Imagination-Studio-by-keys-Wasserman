@@ -99,7 +99,7 @@ fi
 # bump deliberately, the CI floor is this table. torchaudio and faster-whisper stay floating: no version of theirs is
 # written down in this repo to copy, and the resolver keeps them beside the torch pinned here.
 TORCH_PIN=(torch==2.14.1 torchvision==0.29.1)  # requirements.lock; scripts/setup-comfy.sh pins the same pair
-STUDIO_PIN=(huggingface_hub==1.33.0 fastapi==0.142.2 uvicorn==0.54.0 python-multipart==0.0.32 pillow==12.3.0)  # requirements.lock
+STUDIO_PIN=(huggingface_hub==1.33.0 fastapi==0.142.2 uvicorn==0.54.0 websockets==17.2 python-multipart==0.0.32 pillow==12.3.0)  # requirements.lock; websockets: the Voice panel's socket (app/ghost.py)
 IMAGE_ONLY=0; RENDER=1; VERIFY=0; REF2VA=0; MOTION=0; VOICE=0; UPGRADE=0; LORAS=""; H3_BASE=0; WORKFLOWS=1; IMAGE_EDIT=0; FLUX3=0; MOSS=0; MUSIC=0; SOUND=0; BOLT=0; TRAIN=0; GRAPHICS=""; FINISH=""
 for arg in "$@"; do
   case "$arg" in

@@ -401,6 +401,20 @@ It runs on this computer and needs no account.
 | ![Wasserman's Filmmaker Suite, built in](docs/screenshots/filmmaker-suite.webp) | ![Machine: live readings and storage on a DGX Spark](docs/screenshots/machine.png) |
 | **Wasserman's Filmmaker Suite** | **Machine** |
 
+## Voice director: talk to the studio (Keys Ghost Machine)
+
+The microphone in the header opens the **Voice panel**: Boo, the [Keys Ghost Machine](https://github.com/drowzeys/keys-ghost-machine-audio-visual-agent)
+voice agent, beside the studio (full screen on a phone). Ask it what is in the queue and how long it has left, list
+your Slate films, shots and takes, "start a render of the opening shot at 480p", "make shot 3 darker and re-render it",
+"play take 2" or "cancel the last job"; it answers out loud and asks before it cancels anything or starts a long render.
+Boo runs on its own computer (a Mac, or a DGX Spark that is not leading the others) and reaches the studio with its
+access key; the studio serves Boo's page on its own address, so it works on a phone too. Setup, the access key and
+phone use: [docs/voice-director.md](docs/voice-director.md).
+
+| ![The Voice panel beside Slate](docs/screenshots/voice-panel.webp) | ![The Voice panel on a phone](docs/screenshots/voice-panel-phone.webp) |
+| :---: | :---: |
+| **Beside the studio** | **On a phone** |
+
 ## Using it on your phone
 
 The models run on your Mac or DGX Spark; the phone is only the screen and the remote. Everything works from it:

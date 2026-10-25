@@ -319,6 +319,13 @@ Rules:
   machine's RAM and the card's free memory (`memory_guard.device`, `voice.mem_available_gb`); keep it that way, a
   check on RAM alone lets Drama 3 load beside a 62 GB ComfyUI on a 96 GB card. `STUDIO_VRAM_GB` pretends to be such a
   card on a Spark (it keeps the GB10's page-cache release). The engines build for the card's own sm (`TF_SM`).
+- The Voice panel (`app/ghost.py`, `app/static/ghost.js`, `docs/voice-director.md`): Keys Ghost Machine's voice agent
+  runs on its own computer, never in the app or its venv, and never on a machine that leads other Sparks. The app keeps
+  its address (`ghost.json`, set through `agents.local` and `slate.nearby_endpoint` only) and serves its page and socket
+  under `/ghost/`, behind the access key (`access.needs_key`), the socket refused from another site's page. Only
+  `/ghost/` gets the looser CSP (the agent page's two CDNs) and `frame-ancestors 'self'`; every other page keeps
+  `frame-ancestors 'none'`, and the page's microphone and camera are `(self)` only. Never pass the Studio's cookie or key
+  to the agent (`PASS_UP`). The agent acts through the Studio's HTTP API with the access key in its own profile.
 - mflux, minimax-h3-mlx, flux3-mlx, TensorFold's music3-mlx, MMAudio and ComfyUI-MMAudio are pinned by commit and used at run time. Do not unpin.
 
 **No personal information, ever:** no real email, phone number, home or postal address, account name, private IP,

@@ -13,6 +13,7 @@
 <link rel="preload" href="fonts/instrument-serif.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="studio.css">
 <link rel="stylesheet" href="nodes.css">
+<link rel="stylesheet" href="ghost.css">
 <script>
 // Settings → Appearance, kept in this browser by settings.js: applied before the first paint
 try { const a = JSON.parse(localStorage.getItem("studio-look") || "null"), c = document.documentElement.classList;
@@ -35,6 +36,7 @@ try { const a = JSON.parse(localStorage.getItem("studio-look") || "null"), c = d
   <button class="navpill" id="backbtn" type="button" aria-label="Back" disabled></button><button class="navpill" id="homebtn" type="button" aria-label="Home" title="Home (⌥H)"></button>
   <span id="roomname"></span><div id="subtabs"></div><span class="fill"></span>
   <button class="kbtn" id="kbtn" type="button" title="Search or run anything (⌘K)"><span>Search or run</span><kbd>⌘K</kbd></button>
+  <button id="ghostbtn" class="iconbtn" type="button" title="Voice director" aria-label="Voice director" aria-pressed="false"></button>
   <button id="helpbtn" class="iconbtn" type="button" title="Learn" aria-label="Learn"></button>
 </header>
 <div id="warnbar" class="hide" role="status"></div>
@@ -79,6 +81,7 @@ try { const a = JSON.parse(localStorage.getItem("studio-look") || "null"), c = d
 <script src="discover.js"></script>
 <script src="nightshift.js"></script>
 <script src="rooms.js"></script>
+<script src="ghost.js"></script>
 <script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});  // notifications (sw.js)</script>
 <script>
 "use strict";

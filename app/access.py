@@ -138,7 +138,8 @@ OPEN = ("/api/key", "/api/updates/health")
 def needs_key(path_: str) -> bool:
     """The studio's data and actions; the page itself, its scripts and pictures load without the key."""
 
-    return (path_.startswith("/api/") or path_.startswith("/files/")) and path_.rstrip("/") not in OPEN
+    # /ghost/: the Voice panel's agent page and socket (ghost.py), which act on the studio through its voice agent
+    return (path_.startswith(("/api/", "/files/", "/ghost/")) or path_ == "/ghost") and path_.rstrip("/") not in OPEN
 
 
 def cookie(port: str | int, key: str, secure: bool) -> str:

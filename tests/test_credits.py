@@ -26,7 +26,10 @@ CORE = ["Keys (drowzeys)", "Sam Wasserman", "Wasserman Productions", "Qwen", "Bl
         "bbaudio-2025", "Alissonerdx", "Akatz Labs", "SAM 3.1", "MediaPipe", "Depth Anything", "OpenCV", "ONNX Runtime",
         "llama.cpp", "Whisper", "faster-whisper", "yt-dlp", "FFmpeg", "PyTorch", "diffusers", "FastAPI", "Geist",
         "Instrument Serif", "blender-mcp", "LobeHub", "itxabdullaa", "Mobius Labs", "Xenova", "Descript", "SGLang-Omni",
-        "xgrammar", "Zig", "BusyBox", "Simple Icons", "DeepBeepMeep", "VisualInference", "Synchformer", "BigVGAN", "T5"]
+        "xgrammar", "Zig", "BusyBox", "Simple Icons", "DeepBeepMeep", "VisualInference", "Synchformer", "BigVGAN", "T5",
+        # the Voice panel's agent (Keys Ghost Machine) and what it is built from
+        "Keys Ghost Machine", "Parakeet", "Silero", "parakeet-mlx", "NeMo", "Cosmos3-Edge", "plotarmordev", "Three.js",
+        "tonyd2wild", "Eyes of Kai", "qwen-audio-agent"]
 
 
 def test_core_makers_are_credited_in_the_repo_and_on_the_page():

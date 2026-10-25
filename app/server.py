@@ -50,6 +50,7 @@ import lengths  # noqa: E402  (which frame counts the model takes, beside this f
 sys.path.insert(0, str(PACK / "spark"))
 import memory_guard  # noqa: E402  (a DGX Spark's memory: what a clip needs and whether this machine has it, in spark/)
 import settings  # noqa: E402  (Settings: looks, layout, presets, settings.json, beside this file)
+import ghost  # noqa: E402  (the Voice panel: Keys Ghost Machine on the Studio's address, beside this file)
 
 FPS = 24
 # seconds -> frames (17n + 5): the four lengths the app has always offered. A job may ask for any count the model takes
@@ -533,6 +534,14 @@ class SecurityHeaders:
     CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
            "img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; font-src 'self' data:; "
            "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+    # the Voice panel's page (ghost.py, /ghost/): Keys Ghost Machine's face loads Three.js and MediaPipe's face and hand
+    # trackers from their CDNs (pinned versions, its own CREDITS.md), records the microphone in an AudioWorklet made
+    # from a blob, and is framed by the Studio's own page only
+    GHOST_CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net "
+                 "https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+                 "media-src 'self' blob: data:; connect-src 'self' https://cdn.jsdelivr.net https://storage.googleapis.com; "
+                 "worker-src 'self' blob:; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; "
+                 "frame-ancestors 'self'")
 
     def __init__(self, app):
         self.app = app
@@ -541,14 +550,19 @@ class SecurityHeaders:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
+        # the Voice panel's page is framed by the Studio's page and hears its microphone (and the camera, when the person
+        # turns it on); the Studio's own page may hand both to its own frames only, never to another site's
+        framed = scope["path"].startswith(ghost.PREFIX)
+        csp, frames = (self.GHOST_CSP, b"SAMEORIGIN") if framed else (self.CSP, b"DENY")
+
         async def headed(message):
             if message["type"] == "http.response.start":
                 headers = message.setdefault("headers", [])
-                for key, value in ((b"content-security-policy", self.CSP.encode()),
+                for key, value in ((b"content-security-policy", csp.encode()),
                                    (b"x-content-type-options", b"nosniff"),
-                                   (b"x-frame-options", b"DENY"),
+                                   (b"x-frame-options", frames),
                                    (b"referrer-policy", b"no-referrer"),
-                                   (b"permissions-policy", b"camera=(), microphone=(), geolocation=()")):
+                                   (b"permissions-policy", b"camera=(self), microphone=(self), geolocation=()")):
                     headers.append([key, value])
             await send(message)
 
@@ -2925,6 +2939,8 @@ app.include_router(push.attach(HOME, lambda request: agents.local(request, True)
 import nightshift  # noqa: E402  (the night shift: a batch rendered overnight, dailies in the morning, beside this file)
 app.include_router(nightshift.attach(HOME, jobs, order, lock, queue_job, cancel, PRESETS, suite.probe, suite.dailies_package, lambda: environment({})["PATH"], push.send))
 app.include_router(settings.attach(HOME))
+# the Voice panel: Keys Ghost Machine's page and socket on the Studio's own address (ghost.py)
+app.include_router(ghost.attach(HOME, agents.local))
 import beats  # noqa: E402  (a song's tempo, beats and bars, measured with numpy, beside this file)
 app.include_router(beats.attach(HOME, inside))
 import roughcut  # noqa: E402  (a rough cut on the song's beats, exported with its FCPXML, EDL and Resolve zip, beside this file)

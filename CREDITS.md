@@ -348,6 +348,28 @@ machine; none of their code ships in this pack.
   **Blender**.
 - The **LobeHub** icon set — the agents' marks on the page (unofficial, MIT; `app/static/brand/THIRD-PARTY-MARKS.md`).
 
+## The Voice panel's voice director: Keys Ghost Machine and what it is built from
+
+**Keys (drowzeys)** made **Keys Ghost Machine** (github.com/drowzeys/keys-ghost-machine-audio-visual-agent, MIT), the
+hands-free voice agent Boo that the Voice panel opens (`app/ghost.py`, `app/static/ghost.js`), with its Studio tools
+back agent. It runs on its own computer, never in this pack or the studio's environment; the studio serves its page
+and socket on its own address. It is built from, each under its own licence:
+
+- **NVIDIA** — **Parakeet TDT 0.6B v3** (CC-BY-4.0), its speech to text, through **parakeet-mlx** (senstella,
+  Apache-2.0) on a Mac and **NeMo** (NVIDIA, Apache-2.0) on a DGX Spark; **Nemotron 3.5 Bolt** as its front brain;
+  **Cosmos3-Edge** (OpenMDW 1.1) for the optional camera.
+- **Silero** — **Silero VAD** v5 (MIT): when someone is speaking.
+- **Fish Audio** — **Fish Audio Drama 3** (Fish Audio Community License v1.0): its voice, served by TensorFold, with
+  **plotarmordev**'s NVFP4 pruned checkpoint and CUDA engine on a DGX Spark. A hosted voice service needs Fish's own
+  licence.
+- **Ash Hart and the TensorFold contributors** — **TensorFold**: the engine for its brain and voice.
+- **Google** — **MediaPipe** Face Detector and Hand Landmarker (Apache-2.0): Boo's gaze and finger counts, in the
+  page, only when its camera is turned on.
+- **Three.js** (mrdoob and the three.js authors, MIT): Boo, the 3D ghost.
+- **tonyd2wild** — **Eyes of Kai** (MIT): the optional camera memory, and the Hermes client its ACP agents follow;
+  **Nous Research** — **Hermes Agent**; the **Qwen Audio team** — **qwen-audio-agent** (Apache-2.0): the idea of a fast
+  voice in front and a tool-using agent behind, no code.
+
 ## The RTX Pro 6000 build, run on the card: August Sturm
 
 **August Sturm (@auguststurm)** ran the Studio's core install on an RTX Pro 6000 Blackwell, the first run on the card

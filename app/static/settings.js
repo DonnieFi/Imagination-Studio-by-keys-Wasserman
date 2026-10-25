@@ -280,6 +280,7 @@ function setAbout() { if (!SET.about && typeof updRequest === "function") { SET.
       "Stability AI: Stable Audio Open · Ho Kei Cheng et al.: MMAudio · kijai: ComfyUI-MMAudio (sound effects and foley)",
       "Ash Hart and the TensorFold contributors: TensorFold (the DGX Spark's music engine on the 1.1.5 release)",
       "NVIDIA: Nemotron 3.5 Bolt and its LiLiCorr drafter (the Studio's brain engine) · MiaAI-Lab: the Bolt TensorFold recipe for the DGX Spark",
+      "The Voice panel: Keys (drowzeys): Keys Ghost Machine, the voice agent Boo · NVIDIA: Parakeet TDT, NeMo and Cosmos3-Edge · Silero: Silero VAD · senstella: parakeet-mlx · Fish Audio: Drama 3 · plotarmordev: Drama 3's NVFP4 engine · Google: MediaPipe · Three.js · tonyd2wild: Eyes of Kai · Qwen Audio team: qwen-audio-agent",
       "antirez: h3.c · RobZombAI: H3MLX · mrbizarro: minimax-h3-mlx (Phosphene) · Filip Strand and the mflux contributors · felix-ab: flux3-mlx",
       "comfyanonymous, Comfy Org and the ComfyUI contributors: ComfyUI, and Comfy Org's MOSS-Image and MiniMax-Music-3 files · Apple: MLX · mlx-vlm · Qwen team: Qwen3-VL · VisualInference",
       "NVIDIA Research: Sol · FastVideo (Hao AI Lab): FastH3 · LightX2V (ModelTC) · larryvrh · TaoLiveAIGC · Viggle · speach1sdef178 · rookiestar28 · ddalcu · Kijai · DeepBeepMeep",
