@@ -245,10 +245,10 @@ def look(picture: Path, brain: dict, prompt: str = VISION) -> tuple[str, str]:
                 engine = bolt_engine(endpoint)
                 if engine is not None:  # the Studio's Bolt engine: refused at once while a job holds its memory
                     with engine.request(wait=False) as live:
-                        return local_vision(picture, live, model or engine_model(), prompt), "local model"
+                        return local_vision(picture, live, model or engine_model(), *([prompt] if prompt != VISION else [])), "local model"
                 if not endpoint:
                     continue
-                return local_vision(picture, endpoint, model or "", prompt), "local model"
+                return local_vision(picture, endpoint, model or "", *([prompt] if prompt != VISION else [])), "local model"
             cli = tool(backend)
             if not cli:
                 continue
