@@ -164,6 +164,9 @@ Rules:
   prompts the app writes, for the picture or the sound: a clip without lines is told `QUIET_PICTURE` ("Mouths stay
   closed.", only where the shot has people) and `QUIET_SOUND` in `app/server.py`, a locked camera is "a locked, still
   camera" (`MOVES` in `app/slate.py`). The tests hold a compiled prompt to the app's own check with `OWN` emptied.
+  A prompt handed to `scripts/video.sh` or `spark/video.sh` with no spoken `<d>` line and no `overall_soundscape:`
+  heading is given that same line under the heading (`ensure_ambient` in `app/negation.py`). The user's own sentences
+  are not changed. `REF_VIDEO_SOUND=1` is left as written, because the reference's sound may hold speech.
 - Slate (`app/slate.py`, `app/static/slate.js`): a shot's `intent` never goes into the prompt. A sheet of the bible is
   changed in place (`SL_BIBLE` and the `update_*` actions): never add a second one with the same name, the id is what
   shots cast. A slot in bars (`tf.bars`, with `tf.song` on the project) sets the clip's frames through

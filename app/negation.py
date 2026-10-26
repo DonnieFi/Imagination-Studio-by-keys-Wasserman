@@ -7,18 +7,31 @@ every mention of photographs was gone; clips told that nobody "NEVER look at the
 cut, no close-up" did not stop cuts to close-ups.
 
 `find` lists such phrases so the page can show them before the job is queued. The prompt is the user's: nothing here
-changes it. The app's own prompts no longer forbid anything by name either: a shot without spoken lines is told
-"Mouths stay closed." (where it has people) and "Only ambient sound is heard.", a locked camera is "a locked, still
-camera" (server.py QUIET_*, slate.py MOVES). The older sentences ("Nobody speaks.", "No voices, no speech.") are still
-passed over in a prompt that has them, as are the control-layer lines of a motion reference.
+changes a sentence they wrote. The app's own prompts no longer forbid anything by name either: a shot without spoken
+lines is told "Mouths stay closed." (where it has people) and "Only ambient sound is heard.", a locked camera is "a
+locked, still camera" (server.py QUIET_*, slate.py MOVES). The older sentences ("Nobody speaks.", "No voices, no
+speech.") are still passed over in a prompt that has them, as are the control-layer lines of a motion reference.
+
+`ensure_ambient` is the other half, for a prompt that never went through the app. scripts/video.sh (and spark/video.sh,
+which serves that script on Linux) calls it before the model sees the text. A prompt with no spoken `<d>` line and no
+`overall_soundscape:` heading gains the Studio's own ambient line under that heading. A prompt that already has the
+heading, a spoken line, or a reference video's own soundtrack is returned as it was.
 """
 
 from __future__ import annotations
 
 import re
+import sys
+from pathlib import Path
 
 REASON = ("The video model has no negative prompt here: a thing the prompt names tends to appear, also when the prompt "
           "says there is none of it. Take the words out and say what is there instead (\"plain dark walls\" for \"no photographs\").")
+# the same sentence server.py writes as QUIET_SOUND. A test holds the two equal.
+QUIET_SOUND = "Only ambient sound is heard."
+SPOKEN = re.compile(r"<d>.*?</d>", re.IGNORECASE | re.DOTALL)
+SOUNDSCAPE = re.compile(r"(?im)^[ \t]*overall_soundscape[ \t]*:")
+DESCRIPTION = re.compile(r"(?i)integrated_multimodal_description[ \t]*:")
+MUSIC = re.compile(r"(?im)^[ \t]*non_diegetic_music[ \t]*:")
 # what the Studio writes itself, about the sound track and the control layers of a motion reference
 OWN = ("Nobody speaks.", "No voices, no speech.", "No speech after the spoken lines.", "No speech.", "non_diegetic_music: N/A",
        "its look is not rendered", "is not rendered", "are not rendered", "These colours are labels only, not the look of the target video.",
@@ -86,3 +99,40 @@ def check_fields(fields: dict) -> dict:
     for key, label in (("scene", "Scene"), ("camera", "Camera"), ("action", "Action")):
         found += [{**one, "field": label} for one in find(str(fields.get(key) or ""))]
     return {"negations": found[:12], "reason": REASON if found else ""}
+
+
+def ensure_ambient(prompt: str, video_sound: bool = False) -> str:
+    """A raw prompt with no spoken line and no soundscape heading, plus the Studio's own ambient line.
+
+    The sentences already in ``prompt`` stay. Returned unchanged when ``prompt`` already has an
+    ``overall_soundscape:`` heading, a ``<d>`` spoken line, or ``video_sound`` (a reference video's own
+    soundtrack, which may itself hold speech). A prompt ``compose`` wrote already has the heading, so it
+    passes through as it was queued.
+    """
+
+    if video_sound or SPOKEN.search(prompt) or SOUNDSCAPE.search(prompt):
+        return prompt
+    body = prompt.strip()
+    if not DESCRIPTION.search(body):
+        body = f"integrated_multimodal_description: [Shot 1] {body}".rstrip()
+    if MUSIC.search(body):
+        return f"{body}\n\noverall_soundscape: {QUIET_SOUND}\n"
+    return f"{body}\n\noverall_soundscape: {QUIET_SOUND}\n\nnon_diegetic_music: N/A\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Write the prepared prompt to stdout. A file argument is read; otherwise stdin is."""
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Add the Studio's ambient soundscape to a raw video prompt.")
+    parser.add_argument("--video-sound", action="store_true", help="a reference video's own soundtrack is in use")
+    parser.add_argument("prompt_file", nargs="?")
+    args = parser.parse_args(argv)
+    text = Path(args.prompt_file).read_text(encoding="utf-8") if args.prompt_file else sys.stdin.read()
+    sys.stdout.write(ensure_ambient(text, video_sound=args.video_sound))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

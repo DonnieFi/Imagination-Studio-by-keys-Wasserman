@@ -1,12 +1,16 @@
 """app/negation.py: python3 -m pytest tests/test_negation.py (or python3 tests/test_negation.py). No GPU, no network.
-What a video prompt forbids by name is listed for the user; the prompt itself is never changed."""
+What a video prompt forbids by name is listed for the user. A sentence the user wrote is never rewritten. A raw
+prompt with no spoken line gains the Studio's own ambient line under its own heading."""
 import os
+import stat
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 os.environ.setdefault("STUDIO_HOME", str(Path(tempfile.mkdtemp()) / "TensorFoldStudio"))
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "app"))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "app"))
 import negation as N  # noqa: E402
 import server  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -80,6 +84,80 @@ def test_a_prompt_written_by_hand_is_checked_before_it_is_queued():
     reply = client.post("/api/prompt/check", json={"prompt": "[Shot 1] A hall. No cut, no close-up. Nobody speaks.\n\noverall_soundscape: No voices, no speech."}).json()
     assert [one["phrase"] for one in reply["negations"]] == ["No cut", "no close-up"] and reply["reason"]
     assert client.post("/api/prompt/check", json={"prompt": "A hall at dusk."}).json() == {"negations": [], "reason": ""}
+
+
+def test_a_raw_prompt_gains_the_ambient_line_and_keeps_its_own_words():
+    """The sentence is the app's own. A prompt the app already composed, a spoken line, a heading, and a
+    reference video's own soundtrack are left as they were given."""
+
+    raw = "A bike rides a dune. No cut, no logo."
+    out = N.ensure_ambient(raw)
+    assert raw in out
+    assert out.startswith("integrated_multimodal_description: [Shot 1] ")
+    assert "overall_soundscape: Only ambient sound is heard." in out
+    assert out.endswith("non_diegetic_music: N/A\n")
+    assert N.QUIET_SOUND == server.QUIET_SOUND
+    made = server.compose({"scene": "A quiet harbour at dawn.", "action": "A boat leaves."}, False)
+    assert N.ensure_ambient(made) == made
+    spoken = "She says: <d>[English] Hello.</d>\n"
+    assert N.ensure_ambient(spoken) == spoken
+    headed = "integrated_multimodal_description: [Shot 1] A hall.\n\noverall_soundscape: No speech.\n"
+    assert N.ensure_ambient(headed) == headed
+    assert N.ensure_ambient(raw, video_sound=True) == raw
+    # a music heading is kept, and the ambient line is still its own heading
+    music = "integrated_multimodal_description: [Shot 1] A hall.\n\nnon_diegetic_music: N/A"
+    prepared = N.ensure_ambient(music)
+    assert "non_diegetic_music: N/A" in prepared and prepared.count("overall_soundscape:") == 1
+    assert N.ensure_ambient("") == ("integrated_multimodal_description: [Shot 1]\n\n"
+                                    "overall_soundscape: Only ambient sound is heard.\n\nnon_diegetic_music: N/A\n")
+
+
+def test_spark_video_sh_prepares_a_raw_prompt_and_leaves_a_finished_one():
+    """spark/video.sh is what scripts/video.sh runs on Linux. A fake renderer records the prompt it was given."""
+
+    folder = Path(tempfile.mkdtemp())
+    prefix = folder / "prefix"
+    (prefix / "venv/bin").mkdir(parents=True)
+    fake = prefix / "venv/bin/python"
+    calls = folder / "calls"
+    fake.write_text("#!/bin/bash\nprintf '%s\\0' \"$@\" > \"$CALLS\"\nexit 0\n")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+
+    def render(prompt_file: Path, **env):
+        calls.unlink(missing_ok=True)
+        run = {**os.environ, "PREFIX": str(prefix), "STUDIO_GPU": "0", "ENGINE": "fasth3", "CALLS": str(calls),
+               "PROMPT_FILE": str(prompt_file)}
+        run.pop("REF_VIDEO_SOUND", None)
+        run.update(env)
+        done = subprocess.run(["bash", str(ROOT / "spark/video.sh"), "", str(folder / "out.mp4")],
+                              env=run, capture_output=True, text=True)
+        assert done.returncode == 0, done.stderr
+        args = calls.read_bytes().split(b"\0")
+        return done, args
+
+    raw = folder / "raw.txt"
+    raw.write_text("A bike rides a dune. No cut, no logo.\n")
+    done, args = render(raw)
+    assert b"--prompt" in args and b"--prompt-file" not in args
+    text = args[args.index(b"--prompt") + 1].decode()
+    assert "A bike rides a dune. No cut, no logo." in text
+    assert "overall_soundscape: Only ambient sound is heard." in text
+    assert "no spoken line and no overall_soundscape heading" in done.stdout
+    assert raw.read_text() == "A bike rides a dune. No cut, no logo.\n"
+
+    headed = folder / "headed.txt"
+    headed.write_text("integrated_multimodal_description: [Shot 1] A hall.\n\noverall_soundscape: Rain.\n\nnon_diegetic_music: N/A\n")
+    done, args = render(headed)
+    assert args[args.index(b"--prompt-file") + 1].decode() == str(headed)
+    assert "no spoken line" not in done.stdout
+
+    voiced = folder / "voiced.txt"
+    voiced.write_text("She says: <d>[English] Hello.</d>\n")
+    _, args = render(voiced)
+    assert args[args.index(b"--prompt-file") + 1].decode() == str(voiced)
+
+    _, args = render(raw, REF_VIDEO_SOUND="1")
+    assert args[args.index(b"--prompt-file") + 1].decode() == str(raw)
 
 
 if __name__ == "__main__":
