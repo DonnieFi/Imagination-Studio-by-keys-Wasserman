@@ -332,23 +332,23 @@ image or the carrier by `spark/build-bolt.sh`; the trimmed settings it runs with
 prompt cache) are the studio's. TensorFold is Ash Hart's and the contributors'; **llama.cpp** (Georgi Gerganov and the
 ggml contributors) runs Bolt on a Mac until TensorFold's Metal port of the engine lands.
 
-## AutoRL Generation: Echo-Infinity's idea, Video Rebirth's HyperFlow-Infinity loop, NVIDIA's Cosmos3-Edge eyes
+## AutoPilot: Echo-Infinity's idea, Video Rebirth's HyperFlow-Infinity loop, NVIDIA's Cosmos3-Edge eyes
 
 **Echo-Infinity** (Yuxuan Bian, Nan Duan, Qiang Xu et al., CUHK and Joy Future Academy, JD; echo-team-joy-future-academy-jd.github.io/Echo-Infinity) had the
-idea AutoRL Generation is built on: an endless video that keeps generating, watching itself and deciding what comes next.
+idea AutoPilot is built on: an endless video that keeps generating, watching itself and deciding what comes next.
 
 **Video Rebirth** made **HyperFlow-Infinity** (github.com/Video-Rebirth/hyperflow-infinity, Apache License 2.0), the
-agent loop for open-ended video on MiniMax H3 that `app/autorl.py` adapts: the self-play loop (render, watch, remember,
+agent loop for open-ended video on MiniMax H3 that `app/autopilot.py` adapts: the self-play loop (render, watch, remember,
 direct, continue), the scene-graph memory (its delta schema, the merge that folds near-duplicate ids, two events a
 segment, the chapter fold and the bounded view the Director reads), the Director's rules against restaging a beat and
 against stagnation, the scene budget, and the branch from a segment with new direction. Parts of its `memory.py` and
-`prompts.py` are adapted with changes (the header of `app/autorl.py` says which); its licence is at
-`LICENSES/HyperFlow-Infinity-LICENSE`. Not used: its HyperFlow 8-step adapter and its latent hand-off; AutoRL renders
-on the Studio's own engines and presets and continues from the last frame (`docs/autorl.md`).
+`prompts.py` are adapted with changes (the header of `app/autopilot.py` says which); its licence is at
+`LICENSES/HyperFlow-Infinity-LICENSE`. Not used: its HyperFlow 8-step adapter and its latent hand-off; AutoPilot renders
+on the Studio's own engines and presets and continues from the last frame (`docs/autopilot.md`).
 
 **NVIDIA** made **Cosmos3-Edge** (nvidia/Cosmos3-Edge, **OpenMDW License Agreement 1.1**: use, modification and
 redistribution free, commercial use included; a copy passed on keeps the agreement and NVIDIA's notices), the vision
-model AutoRL watches each segment with by default (`app/cosmos.py`). It runs on **TensorFold** (Ash Hart and the
+model AutoPilot watches each segment with by default (`app/cosmos.py`). It runs on **TensorFold** (Ash Hart and the
 TensorFold contributors, Apache-2.0): Keys's Cosmos3-Edge ports, branches `cosmos3-cuda-115` (DGX Spark) and
 `cosmos3-metal-115` (Mac) of drowzeys/TensorFold. No Cosmos weights are in this pack.
 

@@ -60,7 +60,7 @@ try { const a = JSON.parse(localStorage.getItem("studio-look") || "null"), c = d
 <script src="suitelinks.js"></script>
 <script src="slate.js"></script>
 <script src="director.js"></script>
-<script src="autorl.js"></script>
+<script src="autopilot.js"></script>
 <script src="motion.js"></script>
 <script src="actions.js"></script>
 <script src="captions.js"></script>
@@ -775,8 +775,8 @@ async function generateSeg(index) { const seg = project.segments[index]; if (!se
   if (seg.start === "previous") { const prev = project.segments[index - 1]; if (!prev) throw new Error("the first segment has nothing to continue from"); const pj = segJob(prev);
     params.first_frame_from = prev.output || (pj && pj.params.output); if (!params.first_frame_from) throw new Error("generate segment " + index + " first, or queue them together"); }
   const j = await api("/api/jobs", { kind: "video", title: "Segment " + (index + 1) + ": " + (seg.title || ""), params }); seg.job = j.id; seg.output = params.output; }
-// three ways to plan a film: this board of segments, the port of Sam Wasserman's Slate (slate.js), or AutoRL Generation (autorl.js)
-const productionSwitch = () => el("div", { class: "choice", role: "radiogroup", style: "margin-bottom:16px" }, [["board", "Production board", "segments one after another: the simple way"], ["slate", "Wasserman Slate", "bible, casting, coverage and a First AD, straight to the render queue"], ["autorl", "AutoRL Generation", "a story seed that directs itself, segment after segment, until you stop it"]].map(([k, title, sub]) =>
+// three ways to plan a film: this board of segments, the port of Sam Wasserman's Slate (slate.js), or AutoPilot (autopilot.js)
+const productionSwitch = () => el("div", { class: "choice", role: "radiogroup", style: "margin-bottom:16px" }, [["board", "Production board", "segments one after another: the simple way"], ["slate", "Wasserman Slate", "bible, casting, coverage and a First AD, straight to the render queue"], ["autopilot", "AutoPilot", "a story seed that directs itself, segment after segment, until you stop it"]].map(([k, title, sub]) =>
   el("button", { type: "button", role: "radio", "aria-checked": String(SL.mode === k), class: SL.mode === k ? "on" : "", onclick: () => { SL.mode = k; try { localStorage.setItem("production-mode", k); } catch {} render(); } }, el("b", {}, title), el("span", {}, sub))));
 const SEG_TEXT = ["scene", "action", "voice", "line", "soundscape", "prompt"];
 function clearSegments() { const was = project.segments.map(s => Object.fromEntries(SEG_TEXT.map(k => [k, s[k] || ""]))), of = project.id;
@@ -786,7 +786,7 @@ function clearSegments() { const was = project.segments.map(s => Object.fromEntr
   saveProject(); render(); undoToast("The text of every segment is empty."); }
 function viewProduction() {
   if (SL.mode === "slate") return viewSlate(productionSwitch());
-  if (SL.mode === "autorl") return viewAutoRL(productionSwitch());
+  if (SL.mode === "autopilot") return viewAutoPilot(productionSwitch());
   const box = el("section", { class: "card" }, productionSwitch(), el("h2", {}, "Production"));
   ensureProject().then(async () => {
     const list = await api("/api/projects"); const total = project.segments.reduce((a, s) => a + Number(s.seconds || 0), 0);
@@ -933,7 +933,7 @@ function viewLibrary() { const box = el("section", { class: "card" }, el("h2", {
 const T = { id: "first", step: 0, coach: false };
 const seen = (() => { try { return new Set(JSON.parse(localStorage.getItem("tutorial-done") || "[]")); } catch { return new Set(); } })();
 const finish = id => { seen.add(id); try { localStorage.setItem("tutorial-done", JSON.stringify([...seen])); } catch {} };
-const TRACKS = { Create: "one clip or image, start to finish", Production: "a film in segments, in Slate, or by AutoRL Generation", "Motion Previs": "a shot's motion and camera, in a new clip", Voice: "speech with Fish Audio Drama 3", Music: "a song with MiniMax-Music3", Editor: "trim, order and export", Library: "everything you have made", Sparks: "one to eight DGX Sparks for a job" };
+const TRACKS = { Create: "one clip or image, start to finish", Production: "a film in segments, in Slate, or by AutoPilot", "Motion Previs": "a shot's motion and camera, in a new clip", Voice: "speech with Fish Audio Drama 3", Music: "a song with MiniMax-Music3", Editor: "trim, order and export", Library: "everything you have made", Sparks: "one to eight DGX Sparks for a job" };
 const BAKER = { goes: "video", start: "text", scene: "A middle-aged baker in a cream shirt and green apron stands behind a wooden counter in a small bakery at dawn, warm window light from the left.",
   action: "He lifts a loaf with both hands, sets it down on the counter, looks at the camera and smiles.", camera: "The camera slowly pushes in throughout the single continuous shot.",
   dialogue: [{ voice: "a warm, calm male voice", language: "English", text: "Good morning. The first loaf of the day is always the best one.", sung: false }], soundscape: "Quiet bakery room tone and a low oven hum. A light tap as the loaf is set down.", music: "N/A" };
@@ -1028,8 +1028,8 @@ function lessons() {
       { t: "Shots", d: ["Each shot has specs (seconds, size, angle, lens, movement) and a prompt in six sections: Subject, Composition, Lighting, Camera, Style, Mood. ✦ Structure, Tighten, Enrich and the rest rewrite it; a Director's note changes it in plain words; the old version goes to History.", "✦ Coverage turns one scene description into a full set of shots from a coverage plan."] },
       { t: "Roll camera", d: ["Under the prompt, choose what the shot opens on: text only, the last frame of the shot before, an image, or the cast's stills. Tick who is in the shot, add spoken lines, a soundscape and a cue.", "The shot is compiled to MiniMax H3's own prompt form, with a preflight list of anything that will not fit. “🎬 Render this shot” queues it; the clip comes back as a take. Circle the take that works."], tip: "A shot is 1 to 15 seconds: it renders at the nearest length the model takes (17n + 5 frames), so a 6 second shot is 141 frames, 5.875 s." },
       { t: "Deliver", d: ["Deliver shows a scene as a strip. “Render every shot without a take” queues the scene in order; a shot that opens on the shot before starts from its last frame. “Send the film's takes to the Timeline (Edit)” puts the circled takes on the timeline, in order.", "The shot list downloads as Markdown or CSV, and the Bible downloads the project.json, which opens in Slate."] } ] },
-    { id: "autorl", track: "Production", title: "AutoRL Generation", sub: "a story that directs itself until you stop it", steps: [
-      { t: "What it does", d: ["Give it a seed: a world, where the story starts, the characters with their looks (and a reference picture each if you have one), a visual style and your direction. It renders a short segment on this Studio's own engines and presets, watches it, writes down in a scene graph only what changed, decides what happens next and renders that, continuing from the last frame. It keeps going until the number of segments you set, or until you stop it.", "At the top of Production pick “AutoRL Generation”, then “New run”. “Seed from: a Slate film's bible” fills the form from a Slate film."], go: { tab: "Production", autorl: true, spot: "AutoRL Generation" } },
+    { id: "autopilot", track: "Production", title: "AutoPilot", sub: "a story that directs itself until you stop it", steps: [
+      { t: "What it does", d: ["Give it a seed: a world, where the story starts, the characters with their looks (and a reference picture each if you have one), a visual style and your direction. It renders a short segment on this Studio's own engines and presets, watches it, writes down in a scene graph only what changed, decides what happens next and renders that, continuing from the last frame. It keeps going until the number of segments you set, or until you stop it.", "At the top of Production pick “AutoPilot”, then “New run”. “Seed from: a Slate film's bible” fills the form from a Slate film."], go: { tab: "Production", autopilot: true, spot: "AutoPilot" } },
       { t: "Watching and remembering", d: ["After each segment the QA gate runs (the spoken line and the identity sheet), and the vision brain looks at eight frames in time order with what is heard: by default NVIDIA Cosmos3-Edge on TensorFold, which the Studio starts on its own port only while it watches. Identity drift or a failed gate renders the segment again at the next seed.", "Open “Scene graph” to see what the film remembers: chapters, the cast as they are now, places and things, the latest events."] },
       { t: "Steering it", d: ["Pause stops after the segment at work; Resume carries on. Settings changed while it runs apply from the next segment. “Branch from here” on any finished segment starts a second run that shares everything up to there and follows your new direction from then on.", "The film is joined again every few segments: continuations cross-fade over the one frame they repeat, a new scene dissolves in."], tip: "A segment the Director writes that only restages an earlier beat, or names what must not be seen, is turned back and written again: the reasons are under each segment." } ] },
     { id: "slatefilm", track: "Production", title: "A whole film in Slate, start to finished video", sub: "one sitting: idea, shots, renders, the final file", steps: [
@@ -1121,7 +1121,7 @@ function spot(text, tries = 14, again = false) { if (!text) return; const want =
   document.querySelectorAll(".spot").forEach(n => n.classList.remove("spot")); marks.forEach(n => n.classList.add("spot"));
   if (!again) { marks[0].scrollIntoView({ block: "center", behavior: "smooth" }); setTimeout(() => { if (Date.now() >= T.spot[1] - 100) document.querySelectorAll(".spot").forEach(n => n.classList.remove("spot")); }, 7000); } }
 function tutorialGo(go) { if (go.set && Object.entries(go.set).some(([k, v]) => C[k] !== v)) { Object.assign(C, go.set); sync(); C.prompt = ""; }
-  if (go.step != null) C.step = go.step; if (go.tab === "Production") SL.mode = go.slate ? "slate" : go.autorl ? "autorl" : "board"; tab = go.tab; T.coach = true; history.replaceState(null, "", "#" + tab); render(); spot(go.spot); }
+  if (go.step != null) C.step = go.step; if (go.tab === "Production") SL.mode = go.slate ? "slate" : go.autopilot ? "autopilot" : "board"; tab = go.tab; T.coach = true; history.replaceState(null, "", "#" + tab); render(); spot(go.spot); }
 function tutorialMove(by) { const L = lessons().find(l => l.id === T.id), n = T.step + by; if (n < 0) return;
   if (n >= L.steps.length) { finish(L.id); T.coach = false; tab = "Tutorial"; render(); return; }
   T.step = n; if (L.steps[n].go) tutorialGo(L.steps[n].go); else { tab = "Tutorial"; render(); } }

@@ -1,4 +1,4 @@
-"""AutoRL Generation: open-ended, self-directing long-form video in the Production tab.
+"""AutoPilot: open-ended, self-directing long-form video in the Production tab.
 
 A story seed (a world, where it starts, the characters with their looks and pictures, a visual style and the user's
 direction) becomes a film that keeps going until it is stopped. Each turn of the loop:
@@ -27,10 +27,10 @@ Nan Duan, Qiang Xu et al., CUHK and Joy Future Academy, JD). The loop's design, 
 fold), the Director's rules against repetition and stagnation and the branch are adapted from Video Rebirth's
 HyperFlow-Infinity (github.com/Video-Rebirth/hyperflow-infinity), Copyright Video Rebirth, Apache License 2.0; see
 NOTICE and LICENSES/HyperFlow-Infinity-LICENSE. The changes: the Studio's engines, presets and queue instead of the
-HyperFlow 8-step adapter and its latent hand-off (docs/autorl.md has the design of a latent-tail continuation), the
+HyperFlow 8-step adapter and its latent hand-off (docs/autopilot.md has the design of a latent-tail continuation), the
 Studio's prompt fields and content rules, a vision brain of the user's choice, and the QA gate on every segment.
 
-Run files live in ``<studio folder>/autorl/<run id>/``: ``run.json`` (settings, seed, segments, state), ``memory.json``
+Run files live in ``<studio folder>/autopilot/<run id>/``: ``run.json`` (settings, seed, segments, state), ``memory.json``
 (the scene graph, schema in ``scene-graph.schema.json`` beside it), ``memory/S0001.json`` (the memory after each
 segment), ``segments/S0001/`` (takes, frames, the Director's and the watcher's answers) and ``film.mp4``.
 """
@@ -105,9 +105,25 @@ def attach(home: Path, *, queue, lookup, stop_job, plain, referenced, references
     ref2va, ref2va_turbo = references or ref2va, references_turbo or ref2va_turbo
     if quality:
         DEFAULTS["quality"] = quality
-    (HOME / "autorl").mkdir(parents=True, exist_ok=True)
+    migrate(HOME)
+    (HOME / "autopilot").mkdir(parents=True, exist_ok=True)
     cosmos.attach(HOME)
     return router
+
+
+def migrate(home: Path) -> None:
+    """Runs made while the feature was called AutoRL Generation (folder ``autorl/``): moved to ``autopilot/`` once, with
+    the paths inside their files."""
+
+    old, new = home / "autorl", home / "autopilot"
+    if not old.is_dir() or new.exists():
+        return
+    old.rename(new)
+    for file in list(new.glob("*/run.json")) + list(new.glob("*/memory/*.json")):
+        try:
+            file.write_text(file.read_text().replace('"autorl/', '"autopilot/'))
+        except OSError:
+            pass
 
 
 def resume_later() -> None:
@@ -120,7 +136,7 @@ def resume_later() -> None:
 
 SCHEMA = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "title": "AutoRL Generation scene graph",
+    "title": "AutoPilot scene graph",
     "description": "What the film has shown so far: who and what persists (nodes), what changed the story (events), and "
                    "older events folded into chapters. Written only from what the watcher saw, never from what was asked for.",
     "type": "object",
@@ -330,11 +346,28 @@ COMPACT_SYSTEM = "You compress a film's history into chapters. Answer only with 
 
 
 def seed_text(seed: dict, style: str) -> str:
-    cast = "\n".join(f"- {c.get('name')}: {c.get('look') or 'as first seen'}" for c in seed.get("characters") or [] if c.get("name"))
+    cast = "\n".join(f"- {c.get('name')}: {c.get('look') or 'as first seen'}" + (f" (segments {c.get('from') or 1} to {c.get('to') or 'the end'})" if c.get("from") or c.get("to") else "")
+                     for c in seed.get("characters") or [] if c.get("name"))
     return "\n".join(bit for bit in (
         f"Inspiration (a starting point, not a plot to retell): {seed['inspiration']}" if seed.get("inspiration") else "",
         f"World: {seed.get('world') or 'open'}", f"Where the film starts: {seed.get('situation') or 'open'}",
         f"Characters:\n{cast}" if cast else "", f"Visual style: {style}" if style else "") if bit)
+
+
+def outline_text(run: dict, index: int) -> str:
+    """The user's ordered beats, when the seed has them: the whole list, and the one this segment carries."""
+
+    outline = run["seed"].get("outline") or []
+    if not outline:
+        return ""
+    listed = "\n".join(f"  {i}. {b['text']}" for i, b in enumerate(outline, start=1))
+    beat = beat_of(run, index)
+    if beat is None:
+        return (f"\nThe user's outline ({len(outline)} beats) is done:\n{listed}\nFrom here on the film is open-ended: continue from "
+                "where it ended.\n")
+    return (f"\nThe user's outline, one beat a segment, in order:\n{listed}\nThis is segment {index}: it carries beat {index}"
+            f" (\"{beat['text']}\"). Follow it, in your own concrete shot, continuing from what the film shows now."
+            + (" It opens on a picture of its own, a new scene: set scene_change to true." if beat.get("image") else "") + "\n")
 
 
 def direction(settings: dict, branch: dict | None, index: int) -> str:
@@ -352,7 +385,7 @@ def direction(settings: dict, branch: dict | None, index: int) -> str:
 
 def first_prompt(run: dict, seconds: float) -> str:
     s = run["settings"]
-    return (seed_text(run["seed"], s.get("style", "")) + "\n" + direction(s, run.get("branch"), 1)
+    return (seed_text(run["seed"], s.get("style", "")) + "\n" + outline_text(run, 1) + direction(s, run.get("branch"), 1)
             + f"\nWrite segment 1, about {seconds:.0f} seconds. It is the opening: establish the world, the look and the "
               "mood, and start the situation. Name its scene and set \"scene_change\" to true.")
 
@@ -365,7 +398,7 @@ def next_prompt(run: dict, index: int, seconds: float, memory_text: str, note: s
     pacing = f"The current scene is {previous.get('scene')!r} and has run {length} segment(s) of a {budget}-segment budget. "
     pacing += ("That budget is spent: set \"scene_change\" to true and move the story to a new place or situation grounded in what happened."
                if length >= budget else "Advance one new visible consequence without restaging what is done.")
-    cast = "\n".join(f"- {name}: {look}" for name, look in (run.get("cast") or {}).items())
+    cast = "\n".join(f"- {name}: {look}" for name, look in cast_at(run, index).items())
     watched = previous.get("watch") or {}
     said = (previous.get("transcript") or "").strip()
     return (seed_text(run["seed"], s.get("style", "")) + "\n"
@@ -378,13 +411,13 @@ def next_prompt(run: dict, index: int, seconds: float, memory_text: str, note: s
             + (f"What was heard: {said}\n" if said else "")
             + (f"\nMemory of the film so far:\n{memory_text}\n" if memory_text else "")
             + (f"\n{note}\n" if note else "")
-            + direction(s, run.get("branch"), index)
+            + outline_text(run, index) + direction(s, run.get("branch"), index)
             + "\nContinue from what really came out, above all the state the last frame leaves things in. Use the memory to keep "
               "people, places and continuity consistent and to avoid repeating what already happened; do not describe the memory itself.")
 
 
 def watch_prompt(run: dict, seg: dict, view: dict, older: int, transcript: str) -> str:
-    cast = "\n".join(f"- {name}: {look}" for name, look in (run.get("cast") or {}).items()) or "- (no pinned looks)"
+    cast = "\n".join(f"- {name}: {look}" for name, look in cast_at(run, seg["index"]).items()) or "- (no pinned looks)"
     start = float(seg.get("start") or 0)
     return (f"The images are frames of segment {seg['index']} of the film, in time order, covering {mmss(start)} to "
             f"{mmss(start + float(seg.get('seconds') or 0))} on the film's clock; the last image is its final frame.\n"
@@ -472,7 +505,7 @@ def ask_json(asker, check, prompt: str, what: str) -> tuple[dict, list[str]]:
 def run_dir(run_id: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", run_id or ""):
         raise HTTPException(400, "bad run id")
-    return HOME / "autorl" / run_id
+    return HOME / "autopilot" / run_id
 
 
 def read_json(path: Path, default=None):
@@ -531,6 +564,38 @@ def on_disk(path: str | None) -> bool:
 
 # ---------- the seed ----------
 
+def span(value) -> tuple[int | None, int | None]:
+    """A character's segments: "1-7", "8-", "-7" or "3" (both ends counted), or nothing for every segment."""
+
+    text = str(value or "").replace(" ", "")
+    found = re.fullmatch(r"(\d*)(-?)(\d*)", text)
+    if not text or not found or not (found[1] or found[3]):
+        return None, None
+    first = int(found[1]) if found[1] else None
+    last = int(found[3]) if found[3] else (None if found[2] else first)
+    return first, last
+
+
+def cast_at(run: dict, index: int) -> dict:
+    """{name: look} of the cast in segment ``index``: a seed character only within its segments (a boy in 1-7 and the
+    man he becomes from 8 are two sheets), and everyone the Director brought in."""
+
+    seeded = {c["name"]: c for c in run["seed"].get("characters") or []}
+    out = {}
+    for name, look in (run.get("cast") or {}).items():
+        c = seeded.get(name)
+        if c and not ((c.get("from") or 1) <= index <= (c.get("to") or 10 ** 6)):
+            continue
+        if look:
+            out[name] = look
+    return out
+
+
+def beat_of(run: dict, index: int) -> dict | None:
+    outline = run["seed"].get("outline") or []
+    return outline[index - 1] if 0 < index <= len(outline) else None
+
+
 def clean_seed(given: dict) -> dict:
     if not isinstance(given, dict):
         raise HTTPException(400, "seed is an object: world, situation, characters")
@@ -541,11 +606,22 @@ def clean_seed(given: dict) -> dict:
         image = str(c.get("image") or "").strip()
         if image and not on_disk(image):
             raise HTTPException(400, f"the picture of {c['name']} is not a file in the studio's folder: {image}")
+        first, last = span(c.get("segments"))
         characters.append({"id": re.sub(r"[^a-z0-9]+", "_", str(c["name"]).lower()).strip("_") or f"c{i + 1}",
-                           "name": str(c["name"]).strip()[:80], "look": str(c.get("look") or "").strip()[:600], "image": image or None})
+                           "name": str(c["name"]).strip()[:80], "look": str(c.get("look") or "").strip()[:600], "image": image or None,
+                           **({"from": first} if first else {}), **({"to": last} if last else {})})
+    outline = []
+    for i, beat in enumerate((given.get("outline") or [])[:LIMIT]):
+        beat = {"text": beat} if isinstance(beat, str) else beat if isinstance(beat, dict) else {}
+        text, image = str(beat.get("text") or "").strip()[:600], str(beat.get("image") or "").strip()
+        if image and not on_disk(image):
+            raise HTTPException(400, f"the opening picture of beat {i + 1} is not a file in the studio's folder: {image}")
+        if text or image:
+            outline.append({"text": text, **({"image": image} if image else {})})
     seed = {"inspiration": str(given.get("inspiration") or "").strip()[:600], "world": str(given.get("world") or "").strip()[:1500],
             "situation": str(given.get("situation") or "").strip()[:1500], "characters": characters[:9],
-            "opening_image": str(given.get("opening_image") or "").strip() or None, "slate": given.get("slate") or None}
+            "opening_image": str(given.get("opening_image") or "").strip() or None, "slate": given.get("slate") or None,
+            **({"outline": outline} if outline else {})}
     if seed["opening_image"] and not on_disk(seed["opening_image"]):
         raise HTTPException(400, "the opening picture is not a file in the studio's folder")
     if not (seed["world"] or seed["situation"] or seed["inspiration"]):
@@ -553,7 +629,7 @@ def clean_seed(given: dict) -> dict:
     return seed
 
 
-@router.get("/api/autorl/seed/slate/{project}")
+@router.get("/api/autopilot/seed/slate/{project}")
 def seed_from_slate(project: str) -> dict:
     """A seed from a Slate film's bible: its world and logline, its characters' looks and pinned stills, its look."""
 
@@ -608,10 +684,10 @@ def public(run: dict) -> dict:
     return {**run, "running": bool(live and live["thread"].is_alive())}
 
 
-@router.get("/api/autorl/runs")
+@router.get("/api/autopilot/runs")
 def list_runs() -> list[dict]:
     out = []
-    for file in sorted((HOME / "autorl").glob("*/run.json"), key=lambda f: -f.stat().st_mtime):
+    for file in sorted((HOME / "autopilot").glob("*/run.json"), key=lambda f: -f.stat().st_mtime):
         run = read_json(file)
         if not run:
             continue
@@ -622,7 +698,7 @@ def list_runs() -> list[dict]:
     return out
 
 
-@router.post("/api/autorl/runs")
+@router.post("/api/autopilot/runs")
 def create_run(body: dict, request: Request) -> dict:
     """A new run: {name, seed: {world, situation, inspiration, characters: [{name, look, image}], opening_image},
     settings: {...DEFAULTS}, start: true to begin at once}."""
@@ -633,7 +709,7 @@ def create_run(body: dict, request: Request) -> dict:
     run_id = time.strftime("r%m%d-%H%M%S-") + uuid.uuid4().hex[:5]
     seed = clean_seed(body.get("seed") or {})
     settings = clean_settings(body.get("settings") or {})
-    run = {"id": run_id, "name": (str(body.get("name") or "").strip() or "AutoRL film")[:120], "created": slate.now(),
+    run = {"id": run_id, "name": (str(body.get("name") or "").strip() or "AutoPilot film")[:120], "created": slate.now(),
            "state": "idle", "error": "", "seed": seed, "settings": settings, "segments": [], "branch": None, "film": None,
            "cast": {c["name"]: c["look"] for c in seed["characters"] if c.get("look")}, "log": [], "current": {}, "rev": 0}
     folder = run_dir(run_id)
@@ -646,13 +722,13 @@ def create_run(body: dict, request: Request) -> dict:
     return public(run)
 
 
-@router.get("/api/autorl/runs/{run_id}")
+@router.get("/api/autopilot/runs/{run_id}")
 def get_run(run_id: str) -> dict:
     run = load(run_id)
     return {**public(run), "memory": memory_of(run)}
 
 
-@router.put("/api/autorl/runs/{run_id}")
+@router.put("/api/autopilot/runs/{run_id}")
 def change_settings(run_id: str, body: dict, request: Request) -> dict:
     """New settings or a new name between segments: they apply from the next segment on."""
 
@@ -681,13 +757,13 @@ def begin(run: dict) -> dict:
                 seg["status"], seg["job"], seg["error"] = "planned", None, ""
         say(run, "Started." if not committed(run) else f"Resumed after segment {len(committed(run))}.")
         stop = threading.Event()
-        thread = threading.Thread(target=work, args=(run, stop), daemon=True, name="autorl-" + run["id"])
+        thread = threading.Thread(target=work, args=(run, stop), daemon=True, name="autopilot-" + run["id"])
         runs[run["id"]] = {"thread": thread, "stop": stop, "run": run}
         thread.start()
         return run
 
 
-@router.post("/api/autorl/runs/{run_id}/start")
+@router.post("/api/autopilot/runs/{run_id}/start")
 def start_run(run_id: str, request: Request) -> dict:
     """Start, or resume a paused, stopped or failed run where it stopped."""
 
@@ -697,7 +773,7 @@ def start_run(run_id: str, request: Request) -> dict:
     return public(begin(load(run_id)))
 
 
-@router.post("/api/autorl/runs/{run_id}/pause")
+@router.post("/api/autopilot/runs/{run_id}/pause")
 def pause_run(run_id: str, request: Request) -> dict:
     """Pause after the segment at work: it renders, is checked and joins the film; then the loop waits."""
 
@@ -712,7 +788,7 @@ def pause_run(run_id: str, request: Request) -> dict:
     return public(live["run"])
 
 
-@router.post("/api/autorl/runs/{run_id}/stop")
+@router.post("/api/autopilot/runs/{run_id}/stop")
 def stop_run(run_id: str, request: Request) -> dict:
     """Stop now: a segment still waiting in the queue is taken out (it is planned again on resume); one rendering
     finishes and is picked up on resume."""
@@ -731,7 +807,7 @@ def stop_run(run_id: str, request: Request) -> dict:
     return public(run)
 
 
-@router.post("/api/autorl/runs/{run_id}/branch")
+@router.post("/api/autopilot/runs/{run_id}/branch")
 def branch_run(run_id: str, body: dict, request: Request) -> dict:
     """A new run that shares segments 1..``after`` of this one (their clips stay where they are), with the memory as
     it was after segment ``after``, and goes on with new ``guidance``. {after, guidance, name?, segments?, seed?, start?}"""
@@ -779,7 +855,7 @@ def branch_run(run_id: str, body: dict, request: Request) -> dict:
     return public(run)
 
 
-@router.post("/api/autorl/runs/{run_id}/assemble")
+@router.post("/api/autopilot/runs/{run_id}/assemble")
 def assemble_now(run_id: str, request: Request) -> dict:
     import agents
 
@@ -792,12 +868,12 @@ def assemble_now(run_id: str, request: Request) -> dict:
     return public(run)
 
 
-@router.get("/api/autorl/vision")
+@router.get("/api/autopilot/vision")
 def vision_state() -> dict:
     return cosmos.summary()
 
 
-@router.post("/api/autorl/vision")
+@router.post("/api/autopilot/vision")
 def vision_save(body: dict, request: Request) -> dict:
     """{endpoint: "studio:cosmos" | a nearby http://host:port | "" (the QA gate's eyes), model, frames}"""
 
@@ -816,7 +892,7 @@ def vision_save(body: dict, request: Request) -> dict:
 
 
 def resume_all() -> None:
-    for file in (HOME / "autorl").glob("*/run.json"):
+    for file in (HOME / "autopilot").glob("*/run.json"):
         run = read_json(file)
         if run and run.get("state") in ACTIVE and run["id"] not in runs:
             try:
@@ -915,8 +991,8 @@ def plan(run: dict) -> dict:
     asker = (lambda text: ask_vision_text(run, prompt_with_system(text))) if s.get("director") == "vision" else (lambda text: ask_text(run, DIRECTOR_SYSTEM, text))
     data, rejected = ask_json(asker, check_answer, prompt, "Director")
     shot = data["shot"]
-    if index == 1:
-        data["scene_change"] = True
+    if index == 1 or (beat_of(run, index) or {}).get("image"):
+        data["scene_change"] = True  # the opening, or a beat that opens on a picture of its own
     for person in data.get("new_characters") or []:
         if isinstance(person, dict) and person.get("name") and person.get("look"):
             run.setdefault("cast", {}).setdefault(str(person["name"]).strip(), str(person["look"]).strip())
@@ -985,8 +1061,17 @@ def director_problem(run: dict, data: dict, index: int, stuck) -> str:
 
 # ---------- render ----------
 
-def references_for(run: dict) -> list[str]:
-    return [c["image"] for c in run["seed"].get("characters") or [] if c.get("image") and on_disk(c["image"])][:9]
+def pictured(run: dict, index: int) -> list[dict]:
+    """The cast with a reference picture in segment ``index``."""
+
+    active = cast_at(run, index)
+    return [c for c in run["seed"].get("characters") or [] if c.get("image") and on_disk(c["image"])
+            and (c["name"] in active or not c.get("look"))
+            and (c.get("from") or 1) <= index <= (c.get("to") or 10 ** 6)][:9]
+
+
+def references_for(run: dict, index: int = 1) -> list[str]:
+    return [c["image"] for c in pictured(run, index)]
 
 
 def mode_of(run: dict, seg: dict) -> str:
@@ -994,7 +1079,9 @@ def mode_of(run: dict, seg: dict) -> str:
     picture (``image``) or from text."""
 
     identity = run["settings"].get("identity", "auto")
-    pictures = bool(references_for(run)) and identity != "frame" and ref2va()
+    pictures = bool(references_for(run, seg["index"])) and identity != "frame" and ref2va()
+    if (beat_of(run, seg["index"]) or {}).get("image"):
+        return "image"  # the user's own opening picture for this beat
     if seg["index"] > 1 and not seg["scene_change"]:
         return "previous"
     if pictures:
@@ -1004,11 +1091,11 @@ def mode_of(run: dict, seg: dict) -> str:
     return "text"
 
 
-def look_lines(run: dict, fields: dict) -> str:
+def look_lines(run: dict, fields: dict, index: int) -> str:
     """The pinned looks of the cast this segment names, said every time: the renderer has no memory."""
 
     text = " ".join(str(fields.get(k) or "") for k in ("setting", "action")).lower()
-    return " ".join(f"{name} is {look.rstrip('.')}." for name, look in (run.get("cast") or {}).items()
+    return " ".join(f"{name} is {look.rstrip('.')}." for name, look in cast_at(run, index).items()
                     if look and name.lower().split()[0] in text)
 
 
@@ -1021,15 +1108,14 @@ def prompt_of(run: dict, seg: dict, mode: str) -> str:
     dialogue = [{"speaker": d.get("speaker") or "", "voice": d.get("voice") or "a natural voice", "text": str(d["text"]).strip(), "language": "English"}
                 for d in f.get("dialogue") or []]
     if mode == "references":
-        pictured = [c for c in run["seed"]["characters"] if c.get("image") and on_disk(c["image"])][:9]
-        names = [c["name"] for c in pictured]
+        names = [c["name"] for c in pictured(run, seg["index"])]
         for line in dialogue:
             line["subject"] = names.index(line["speaker"]) + 1 if line["speaker"] in names else 1
         fields = {"scene": " ".join(bit for bit in (style, f.get("setting", "")) if bit), "camera": f.get("camera", ""),
                   "action": f.get("action", ""), "dialogue": dialogue, "soundscape": f.get("soundscape", ""), "music": music,
                   "subjects": names, "people": True}
         return compose_references(fields, len(names))
-    scene = " ".join(bit for bit in (style, look_lines(run, f), f.get("setting", "")) if bit)
+    scene = " ".join(bit for bit in (style, look_lines(run, f, seg["index"]), f.get("setting", "")) if bit)
     fields = {"scene": scene, "camera": f.get("camera", ""), "action": f.get("action", ""), "dialogue": dialogue,
               "soundscape": f.get("soundscape", ""), "music": music}
     return compose(fields, mode in ("previous", "image"), frames=seg["frames"])
@@ -1040,15 +1126,15 @@ def render(run: dict, seg: dict) -> None:
     done = committed(run)
     mode = mode_of(run, seg)
     take = len(seg["takes"]) + 1
-    output = f"autorl/{run['id']}/segments/{seg['id']}/take{take}.mp4"
+    output = f"autopilot/{run['id']}/segments/{seg['id']}/take{take}.mp4"
     prompt = prompt_of(run, seg, mode)
     params = {"prompt": prompt, "preset": s["preset"], "frames": seg["frames"], "seed": int(seg["seed"]), "output": output,
               "qa": False,  # the gate runs here, with the watcher, once per take (check)
-              "brain": s.get("brain") or {}, "autorl": {"run": run["id"], "segment": seg["index"]}}
+              "brain": s.get("brain") or {}, "autopilot": {"run": run["id"], "segment": seg["index"]}}
     if s["preset"] == "custom" and s.get("width") and s.get("height"):
         params.update(width=int(s["width"]), height=int(s["height"]))
     if mode == "references":
-        params["references"] = references_for(run)
+        params["references"] = references_for(run, seg["index"])
         if s.get("ref_turbo") and ref2va_turbo():
             params["ref_turbo"] = True
     else:
@@ -1058,9 +1144,9 @@ def render(run: dict, seg: dict) -> None:
     if mode == "previous":
         params["first_frame_from"] = done[-1]["output"]
     if mode == "image":
-        params["image"] = run["seed"]["opening_image"]
+        params["image"] = (beat_of(run, seg["index"]) or {}).get("image") or run["seed"]["opening_image"]
     try:
-        job = submit({"kind": "video", "title": f"AutoRL · {run['name']} · {seg['index']}: {seg['beat'][:60]}", "params": params})
+        job = submit({"kind": "video", "title": f"AutoPilot · {run['name']} · {seg['index']}: {seg['beat'][:60]}", "params": params})
     except HTTPException as error:
         raise Failed(f"the queue refused segment {seg['index']}: {error.detail}") from None
     seg.update(status="queued", job=job["id"], mode=mode, prompt=prompt, output=output,
@@ -1165,12 +1251,12 @@ def check_watch(data: dict) -> str:
 DRIFT_SYSTEM = "You compare people across frames of one video. Answer only with JSON."
 
 
-def confirm_drift(run: dict, frames: list, watched: dict) -> tuple[bool, dict]:
+def confirm_drift(run: dict, frames: list, watched: dict, index: int) -> tuple[bool, dict]:
     """A second, narrower look before identity drift fails a take: the first, middle and last frames, and one question
     (is it the same person). Measured on the first real run: Cosmos3-Edge's scene-graph answer called a courier who
     got on her vehicle "identity drift"; asked only about the face, hair and age it answers the question asked."""
 
-    names = "; ".join(f"{n}: {look}" for n, look in (run.get("cast") or {}).items()) or "the main character"
+    names = "; ".join(f"{n}: {look}" for n, look in cast_at(run, index).items()) or "the main character"
     pick = [frames[0], frames[len(frames) // 2], frames[-1]]
     prompt = (f"The three images are frames of one short video clip, in time order. The pinned looks: {names}.\n"
               "Look only at the main person's FACE, HAIR, AGE and BUILD. Clothing, props, vehicles, pose, distance, motion blur "
@@ -1227,7 +1313,7 @@ def check(run: dict, seg: dict) -> None:
                "identity_drift": watched["identity_drift"], "by": who[-1] if who else "", "rejected": rejected,
                "sheet": relative(sheet), "frames": [relative(p) for _, p in frames]}
     if watched["identity_drift"]:
-        watched["identity_drift"], watched["drift_check"] = confirm_drift(run, frames, watched)
+        watched["identity_drift"], watched["drift_check"] = confirm_drift(run, frames, watched, seg["index"])
     write_json(folder / f"watch-take{take}.json", watched)
     reasons = []
     if report.get("passed") is False:

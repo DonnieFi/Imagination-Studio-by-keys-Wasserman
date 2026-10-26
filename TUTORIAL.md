@@ -431,9 +431,9 @@ A LoRA on FastH3 is merged into TensorFold's int8 engine and takes what a clip w
 1376x768 at 10 seconds. A Spark whose engine predates 2.7.1 renders LoRA clips on ComfyUI's own blocks, and refuses
 them above 1280x736 at 124 frames.
 
-## 13.5 AutoRL Generation: a story that keeps going
+## 13.5 AutoPilot: a story that keeps going
 
-1. **Production → AutoRL Generation → New run.** Give it a name and a seed: the world, where the story starts, and the
+1. **Production → AutoPilot → New run.** Give it a name and a seed: the world, where the story starts, and the
    characters, each with a look (face, age, hair, clothes: it is repeated in every segment) and, if you have one, a
    reference picture from the Library. Or choose *Seed from: a Slate film's bible*.
 2. **Settings.** A visual style, your direction for the Director, the output and quality you already use (480p with

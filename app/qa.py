@@ -232,7 +232,7 @@ def default_brain() -> dict:
 
 def look(picture: Path, brain: dict, prompt: str = VISION) -> tuple[str, str]:
     """(answer, who gave it) from the first vision model that answers: the film's brain first, then the others.
-    ``prompt`` is the gate's own question unless a caller asks another of the same picture (autorl.py's watcher)."""
+    ``prompt`` is the gate's own question unless a caller asks another of the same picture (autopilot.py's watcher)."""
 
     brain = {**default_brain(), **{key: value for key, value in (brain or {}).items() if value}}
     # a film whose brain is a local model never has its frames sent to a cloud CLI, even when the local one is down

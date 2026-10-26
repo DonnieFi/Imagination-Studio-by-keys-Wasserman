@@ -62,7 +62,7 @@ under app/motion_templates/. Motion Previs Studio was developed and created by S
 and Wasserman.ai; its NOTICE is kept at LICENSES/Motion-Previs-Studio-NOTICE. Third-party notices for that tab
 (MediaPipe, Depth Anything, OpenCV, ONNX Runtime) are in THIRD_PARTY_NOTICES.md.
 
-AutoRL Generation (app/autorl.py, app/static/autorl.js) adapts the loop design and parts of the scene-graph memory and
+AutoPilot (app/autopilot.py, app/static/autopilot.js) adapts the loop design and parts of the scene-graph memory and
 Director prompts of HyperFlow-Infinity (https://github.com/Video-Rebirth/hyperflow-infinity), Copyright Video Rebirth,
 licensed under the Apache License 2.0 (LICENSES/HyperFlow-Infinity-LICENSE); the adapted parts were changed for this
 product. The idea of an endless self-directing video is Echo-Infinity's (Yuxuan Bian, Nan Duan, Qiang Xu et al., CUHK and Joy Future Academy, JD).

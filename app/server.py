@@ -1931,7 +1931,7 @@ def perform(job: dict, worker: dict | None = None) -> None:
         if job["kind"] not in ("music", "export", "soundtrack", "finish", "graphics") and worker is None and not job.get("remote"):
             if music.release(f"a {job['kind']} job needs the GPU"):
                 job["log"] += "[tensorfold] MiniMax Music 3 was unloaded to give this job its memory\n"
-        # the vision brain's own Cosmos3-Edge (cosmos.py), loaded while AutoRL watches a segment, never beside a render here
+        # the vision brain's own Cosmos3-Edge (cosmos.py), loaded while AutoPilot watches a segment, never beside a render here
         if job["kind"] not in ("export", "soundtrack", "finish", "graphics") and worker is None and not job.get("remote"):
             if cosmos.release(f"a {job['kind']} job"):
                 job["log"] += "[tensorfold] Cosmos3-Edge (the vision brain) was unloaded to give this job its memory\n"
@@ -2798,8 +2798,8 @@ app.include_router(director.attach(HOME, queue=queue_job, lookup=jobs.get, stop_
 import agents  # noqa: E402  (Brains and agents: the user's own CLI sign-ins and MCP tools, beside this file)
 app.include_router(agents.attach(HOME))
 import cosmos  # noqa: E402  (the vision brain: NVIDIA Cosmos3-Edge on TensorFold, beside this file)
-import autorl  # noqa: E402  (AutoRL Generation: an open-ended film that watches itself and directs the next segment)
-app.include_router(autorl.attach(HOME, queue=queue_job, lookup=jobs.get, stop_job=cancel, plain=compose, referenced=compose_references,
+import autopilot  # noqa: E402  (AutoPilot: an open-ended film that watches itself and directs the next segment)
+app.include_router(autopilot.attach(HOME, queue=queue_job, lookup=jobs.get, stop_job=cancel, plain=compose, referenced=compose_references,
                                  references=ref2va_ready, references_turbo=ref2va_turbo_ready, quality="fh8" if SPARK else "standard"))
 
 
@@ -3027,7 +3027,7 @@ if __name__ == "__main__":
     if not os.environ.get("STUDIO_PIDFILE"):  # the captioner describes this studio's Library, not a worker Spark's
         caption_router.captioner["start"]()
     director.resume_later()  # the Director's runs a restart cut off
-    autorl.resume_later()  # AutoRL runs a restart cut off
+    autopilot.resume_later()  # AutoPilot runs a restart cut off
     app.router.on_shutdown.append(stop_session_comfy)  # the detached ComfyUI belongs to this process, not to one render
 
     # Update authorization needs the actual socket peer. Tailscale Serve forwards the browser's IP,

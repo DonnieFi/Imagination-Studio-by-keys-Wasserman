@@ -1,11 +1,11 @@
-"""The vision brain: NVIDIA Cosmos3-Edge on TensorFold, the eyes AutoRL Generation watches each segment with.
+"""The vision brain: NVIDIA Cosmos3-Edge on TensorFold, the eyes AutoPilot watches each segment with.
 
 Cosmos3-Edge (nvidia/Cosmos3-Edge, OpenMDW 1.1) is a small vision-language reasoner, strong at physical, spatial and
 "what happened" questions. TensorFold's port (branch ``cosmos3-cuda-115`` on a DGX Spark, ``cosmos3-metal-115`` on a
 Mac) serves it as an OpenAI-compatible chat API with ``--vision``: images as data-URL ``image_url`` parts, several in
 one request (``--vision-max-images``, 4 unless set), PNG always (JPEG needs libturbojpeg beside the binary).
 
-Where the vision brain is (``vision.json`` in the AutoRL folder, set in Settings and on the AutoRL panel):
+Where the vision brain is (``vision.json`` in the AutoPilot folder, set in Settings and on the AutoPilot panel):
 
   ``studio:cosmos``   the Studio's own instance (the default): started here on a loopback port when a segment is
                       watched, under a kill-guard (``COSMOS3_GUARD_GB``, 15: MemAvailable, vm_stat on a Mac), unloaded
@@ -14,7 +14,7 @@ Where the vision brain is (``vision.json`` in the AutoRL folder, set in Settings
                       It never takes ``~/studio-gpu.lock.d``. Never point the Studio at another program's Cosmos (a voice
                       agent's eyes): give the Studio its own.
   ``http://host:port``  any OpenAI-compatible vision server the user runs (nearby addresses only, slate.nearby_endpoint)
-  empty               no vision server: AutoRL watches through the QA gate's vision path instead (qa.look: the film's
+  empty               no vision server: AutoPilot watches through the QA gate's vision path instead (qa.look: the film's
                       brain, Claude Code, Codex or a local vision model) on one time-ordered frame sheet
 
 The binary is ``COSMOS3_BIN`` (default ``$PREFIX/cosmos3/bin/tensorfold-native``) and the converted weights
@@ -62,7 +62,7 @@ def attach(home: Path) -> None:
 # ---------- where the vision brain is ----------
 
 def settings_file() -> Path:
-    return (HOME or Path.home()) / "autorl" / "vision.json"
+    return (HOME or Path.home()) / "autopilot" / "vision.json"
 
 
 def settings() -> dict:
@@ -105,7 +105,7 @@ def summary() -> dict:
     managed = said["endpoint"].lower() == STUDIO
     return {**said, "managed": managed, "installed": installed(), "loaded": loaded(), "port": PORT,
             "why": "" if not managed or installed() else f"Cosmos3-Edge is not installed here ({BIN} and {MODEL}/config.json): "
-                                                          "AutoRL watches through the QA gate's vision path until it is, or name a vision server"}
+                                                          "AutoPilot watches through the QA gate's vision path until it is, or name a vision server"}
 
 
 # ---------- the Studio's own instance ----------
@@ -158,7 +158,7 @@ def load() -> str:
         free = mem_available_gb()
         if 0 <= free < GUARD_GB + 6:
             raise LookupError(f"Cosmos3-Edge needs about 6 GB above its {GUARD_GB:g} GB floor; {free:.1f} GB is available")
-        log_path = (HOME or Path.home()) / "autorl" / "cosmos3.log"
+        log_path = (HOME or Path.home()) / "autopilot" / "cosmos3.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log = open(log_path, "ab")
         command = [str(BIN), "serve", str(MODEL), "--name", SERVED, "--host", "127.0.0.1", "--port", str(PORT),

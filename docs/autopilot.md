@@ -1,22 +1,22 @@
-# AutoRL Generation
+# AutoPilot
 
-AutoRL Generation is the third way to plan a film in **Production**, beside the Production board and Wasserman Slate.
+AutoPilot is the third way to plan a film in **Production**, beside the Production board and Wasserman Slate.
 Give it a story seed and it keeps going: it renders a short segment on the Studio's own engines, watches it, writes
 down what changed, decides what happens next, and renders that, continuing from the last frame, until it reaches the
 number of segments you set or you stop it.
 
 The idea of an endless video that watches itself is Echo-Infinity's (Yuxuan Bian, Nan Duan, Qiang Xu et al., CUHK
 and Joy Future Academy, JD). The loop's design and parts of its memory and Director prompts are adapted from Video
-Rebirth's HyperFlow-Infinity (Apache-2.0; `LICENSES/HyperFlow-Infinity-LICENSE`). AutoRL does not use the HyperFlow
+Rebirth's HyperFlow-Infinity (Apache-2.0; `LICENSES/HyperFlow-Infinity-LICENSE`). AutoPilot does not use the HyperFlow
 8-step adapter: segments render with the Studio's presets (FastH3 fh4, fh8, fh20, the Sharp Spec, Ref2VA, the LoRA hub)
 and their quality.
 
-Code: `app/autorl.py` (the loop and its routes), `app/cosmos.py` (the vision brain), `app/static/autorl.js` (the
-panel), `tests/test_autorl.py`.
+Code: `app/autopilot.py` (the loop and its routes), `app/cosmos.py` (the vision brain), `app/static/autopilot.js` (the
+panel), `tests/test_autopilot.py`.
 
-![A finished run: the film so far, the controls and a segment's watcher notes](screenshots/autorl-run.jpg)
+![A finished run: the film so far, the controls and a segment's watcher notes](screenshots/autopilot-run.jpg)
 
-![Frames across the 4-segment test film](screenshots/autorl-film-frames.jpg)
+![Frames across the 4-segment test film](screenshots/autopilot-film-frames.jpg)
 
 ## The loop
 
@@ -85,7 +85,7 @@ instance on a loopback port (8362, `COSMOS3_PORT`) when a segment is watched, wi
 (15 GB available), and unloads it after 120 idle seconds and before any other local job of the queue, as Voice and
 Music are. It loads in about 3 s and holds about 3.5 GB. Frames go as PNG data URLs (448x256 each, 112 image rows;
 nine stay under the port's 1200 rows a request). A server that refuses that many images gets one time-ordered sheet of
-the same frames instead. Set it in the AutoRL panel or with `POST /api/autorl/vision`:
+the same frames instead. Set it in the AutoPilot panel or with `POST /api/autopilot/vision`:
 
 - `studio:cosmos`: the Studio's own Cosmos (needs `COSMOS3_BIN` and `COSMOS3_MODEL`, default `$PREFIX/cosmos3/`);
 - `http://host:port`: any OpenAI-compatible vision server on this computer, network or tailnet. Do not point it at
@@ -97,7 +97,7 @@ The Director stays on the text brain by default; `director: "vision"` asks the v
 
 ## Files
 
-`<studio folder>/autorl/<run id>/`:
+`<studio folder>/autopilot/<run id>/`:
 
 | File | What |
 |---|---|
@@ -107,7 +107,7 @@ The Director stays on the text brain by default; `director: "vision"` asks the v
 | `memory/S0001.json` | the memory after segment 1, with its delta and the cast |
 | `segments/S0001/` | `take1.mp4`, `director.json`, `watch-take1.json`, `frames-take1/`, `qa-take1.png` |
 | `film.mp4` | the film so far |
-| `vision.json` (in `autorl/`) | the vision brain's address, model and frame count |
+| `vision.json` (in `autopilot/`) | the vision brain's address, model and frame count |
 
 The scene graph:
 
@@ -124,16 +124,16 @@ story; a node id the watcher misspells is folded into the existing one (`guard_2
 ## The API
 
 ```
-GET  /api/autorl/runs                          the runs
-POST /api/autorl/runs                          {name, seed: {world, situation, inspiration, characters: [{name, look, image}], opening_image},
+GET  /api/autopilot/runs                          the runs
+POST /api/autopilot/runs                          {name, seed: {world, situation, inspiration, characters: [{name, look, image}], opening_image},
                                                 settings: {style, guidance, preset, quality, seconds, segments (0 = until stopped), seed,
                                                 max_scene_segments, qa, retakes, preview_every, identity, music, loras, brain}, start}
-GET  /api/autorl/runs/{id}                     the run and its memory
-PUT  /api/autorl/runs/{id}                     {settings, name}: applies from the next segment
-POST /api/autorl/runs/{id}/start | pause | stop | assemble
-POST /api/autorl/runs/{id}/branch              {after, guidance, segments?, seed?, start?}
-GET  /api/autorl/seed/slate/{project}          a seed from a Slate film's bible
-GET  /api/autorl/vision, POST /api/autorl/vision  {endpoint, model, frames}
+GET  /api/autopilot/runs/{id}                     the run and its memory
+PUT  /api/autopilot/runs/{id}                     {settings, name}: applies from the next segment
+POST /api/autopilot/runs/{id}/start | pause | stop | assemble
+POST /api/autopilot/runs/{id}/branch              {after, guidance, segments?, seed?, start?}
+GET  /api/autopilot/seed/slate/{project}          a seed from a Slate film's bible
+GET  /api/autopilot/vision, POST /api/autopilot/vision  {endpoint, model, frames}
 ```
 
 ## Phase 2 (design only): continuing from the latents
@@ -152,7 +152,7 @@ would need:
   are held at t = 0 in every pass, like a first-frame image's rows.
 - A crop of the redrawn overlap after decode (22 frames for K = 7), and the same on the audio track, so the join has no
   repeated frames and the sound runs through it.
-- AutoRL then keeps a segment's `latents.pt` path and sends `--guide-latents path --guide-count 7` instead of
+- AutoPilot then keeps a segment's `latents.pt` path and sends `--guide-latents path --guide-count 7` instead of
   `first_frame_from`; the QA gate and the watcher are unchanged.
 
 **CUDA H3 engine (TensorFold `h3-cuda-*`, ComfyUI blocks through `TensorFoldH3Blocks`).** The FastH3 int8 route and
