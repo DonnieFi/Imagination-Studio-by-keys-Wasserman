@@ -166,13 +166,21 @@ Full recipes, every option and the measured memory of each job: [Install, and th
 design and build the studio in collaboration with Keys, made Wasserman's Filmmaker Suite, and shaped the production side (Slate, the Sharp Spec, Motion Previs). See
 [Big credit: Sam Wasserman and Wasserman Productions](#big-credit-sam-wasserman-and-wasserman-productions-wassermanproductionscom), below the release notes, and [CREDITS.md](CREDITS.md).*
 
-**3.3.1** · Apple-silicon Macs (measured on a Mac Studio M5 Ultra 256 GB), the NVIDIA DGX Spark, and the NVIDIA RTX Pro
+**3.3.2** · Apple-silicon Macs (measured on a Mac Studio M5 Ultra 256 GB), the NVIDIA DGX Spark, and the NVIDIA RTX Pro
 6000 (96 GB) ·
 [TensorFold](https://github.com/ashhart/TensorFold) **0.6.5** + two families, and TensorFold **1.0**'s native Zig
 runtime for FastH3 on Metal and on CUDA, TensorFold **1.1.5** for the music engines and the Mac's Bolt engine:
 **Qwen 2.1 Turbo**, **Qwen 2.1 Full**, **FLUX3-K Fast** and **FLUX3-K Full** (text to image, and Edit a picture) · **MOSS-Image** (text to image, DGX Spark) · **MiniMax H3**
 (video with sound) · **Fish Audio Drama 3** (Voice) · **MiniMax-Music3** (Music: songs with sung vocals) · int8 kernels on the M5 tensor units and on the GB10's tensor
 cores · a 2x video decoder for 2K finals on the Mac
+
+## New in 3.3.2 (2026-10-25)
+
+The Mac release assets were repacked without a local username: the archives' file owner is now 0/0, and two old
+engine binaries (`bolt-metal-b4edaea5`, `zig-engine-4741fd0a`) lost their symbol tables, which held a build folder's
+path. Their code and data are byte for byte the same. The FastH3 engine `zig-engine-b19753ab-macos-arm64.tar.gz`
+therefore has a new checksum, which `oneshot-setup.sh` now pins. An install from 3.3.1 or earlier that downloads it fails
+the old checksum and falls back to the carrier or a source build, so update to 3.3.2 (`git pull`).
 
 ## New in 3.3.1 (2026-10-25)
 
