@@ -14,6 +14,10 @@ and their quality.
 Code: `app/autorl.py` (the loop and its routes), `app/cosmos.py` (the vision brain), `app/static/autorl.js` (the
 panel), `tests/test_autorl.py`.
 
+![A finished run: the film so far, the controls and a segment's watcher notes](screenshots/autorl-run.jpg)
+
+![Frames across the 4-segment test film](screenshots/autorl-film-frames.jpg)
+
 ## The loop
 
 ```
@@ -48,14 +52,16 @@ seed ──► Director ──► render (the queue) ──► QA gate + watcher
    each take, with the vision brain as its eyes. The watcher then gets eight frames of the segment in time order
    (seven evenly spaced and the last), each with its time, the Whisper transcript, the pinned looks and the scene graph,
    and answers with the scene graph's delta plus `summary`, `ending` (what the last frame shows: the Director continues
-   from it), `continuity` (identity, costume, object or place problems) and `identity_drift`. A failed gate or identity
-   drift renders the segment again at the next seed (`retakes`, one by default); the last take stands otherwise, with
-   its reasons beside it.
+   from it), `continuity` (identity, costume, object or place problems) and `identity_drift`. Drift is confirmed by a
+   second, narrower look (the first, middle and last frames, one question: the same face, hair, age and build?) before
+   it counts: on the first real run Cosmos3-Edge's scene-graph answer called the courier mounting her vehicle "identity
+   drift". A failed gate or confirmed drift renders the segment again at the next seed (`retakes`, one by default); the
+   last take stands otherwise, with its reasons beside it.
 5. **Commit.** The delta is merged; above 22 events the oldest 10 fold into a chapter written by the text brain.
    `memory/S0001.json` keeps the memory after each segment (a branch starts from one).
 6. **Join.** Every `preview_every` segments (3) and on pause or finish, `film.mp4` is made again: a continuation
-   cross-fades over the one frame it repeats (1/24 s, picture and sound together, so they stay in step); a new scene
-   dissolves in over 0.25 s. The soundtrack runs through the joins; a *Score* line in the settings is laid into
+   drops the one frame it repeats and its sound cross-fades over the same 1/24 s, so picture and sound stay in step (a
+   one-frame `xfade` is not used: ffmpeg 6.1 dropped the rest of the film with it); a new scene dissolves in over 0.25 s. The soundtrack runs through the joins; a *Score* line in the settings is laid into
    every segment's music.
 
 **Pause** stops after the segment at work. **Stop** takes a segment still waiting in the queue out of it; one that is
@@ -63,6 +69,14 @@ rendering finishes and is picked up on resume. **Resume** carries on from the la
 restart picks running runs up by itself. **Branch from here** makes a new run that shares segments 1..N (their clips
 stay where they are) and the memory after N, and tells the Director the new direction for everything after N, as
 direction rather than something that already happened.
+
+## Measured
+
+One run on a DGX Spark through the Studio's queue: 4 segments of 5 s at 864x480, FastH3 8 passes, Director Claude Code
+(sonnet's default model), watcher Cosmos3-Edge (the Studio's own instance), QA gate on. 14 min in all, 20.5 s of film:
+a render took 1 min 16 s to 2 min 4 s (the first includes ComfyUI loading), the check and watch 41 s to 1 min 25 s (Whisper on the processor, Cosmos loaded
+for each look in about 3 s), the Director 9 to 17 s. One retake (the false drift described above, before the second
+look existed) and one Director answer that was not JSON, written again.
 
 ## The vision brain
 

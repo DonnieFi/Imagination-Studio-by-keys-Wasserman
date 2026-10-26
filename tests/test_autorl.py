@@ -56,10 +56,14 @@ class Director:
 class Watcher:
     """The vision brain stood in: one fixed observation per call; ``drift`` lists the calls that see identity drift."""
 
-    def __init__(self, drift=(), same=False):
-        self.calls, self.drift, self.same, self.prompts = 0, set(drift), same, []
+    def __init__(self, drift=(), same=False, confirms=True):
+        self.calls, self.drift, self.same, self.prompts, self.confirms, self.checked = 0, set(drift), same, [], confirms, 0
 
     def __call__(self, system, frames, sheet, prompt, brain):
+        if "clearly the same person" in prompt:  # the narrower second look (confirm_drift)
+            self.checked += 1
+            assert len(frames) == 3
+            return json.dumps({"same": not self.confirms, "why": "another face"}), "stand-in"
         self.calls += 1
         self.prompts.append(prompt)
         assert len(frames) >= 4 and all(Path(p).is_file() for _, p in frames) and sheet.is_file()
@@ -168,7 +172,8 @@ def test_a_run_renders_watches_commits_and_joins_the_film(loop):
     assert json.loads((folder / "scene-graph.schema.json").read_text())["title"] == "AutoRL Generation scene graph"
     film = run["film"]
     assert film["segments"] == 3 and (HOME / film["path"]).is_file()
-    assert 2.7 < film["seconds"] < 3.0  # three 1 s clips, two one-frame joins
+    assert abs(film["seconds"] - (3 * 24 - 2) / 24) < 0.01  # three 1 s clips, the repeated frame dropped twice
+    assert abs(autorl.video_seconds(HOME / film["path"]) - autorl.qa.duration(HOME / film["path"])) < 0.1  # picture and sound together
     # the Director saw what the watcher saw, and the transcript
     assert "Vex mid-turn, spray in the air." in loop["director"].asked[1] and "go go go" in loop["director"].asked[1]
     assert "go go go" in loop["watcher"].prompts[0]
@@ -205,6 +210,16 @@ def test_identity_drift_renders_the_segment_again_at_the_next_seed(loop, monkeyp
     assert [t["seed"] for t in second["takes"]] == [2, 3] and second["takes"][0]["passed"] is False
     assert "identity drift" in second["takes"][0]["reasons"][0] and second["passed"] is True
     assert [b["params"]["seed"] for b in loop["queue"].bodies] == [1, 2, 3]
+    assert watcher.checked == 1 and second["takes"][0]["watch"]["drift_check"]["same"] is False
+
+
+def test_drift_the_narrower_look_does_not_confirm_is_not_a_failure(loop, monkeypatch):
+    watcher = Watcher(drift={2}, confirms=False)
+    monkeypatch.setattr(autorl, "ask_vision", watcher)
+    run = go(new_run(2, retakes=1))
+    second = run["segments"][1]
+    assert len(second["takes"]) == 1 and second["passed"] is True and second["watch"]["identity_drift"] is False
+    assert second["watch"]["drift_check"] == {"same": True, "why": "another face"}
 
 
 def test_pause_then_resume_carries_on(loop):
@@ -290,3 +305,16 @@ def test_the_vision_server_gets_every_frame_in_order_and_falls_back_to_the_sheet
     monkeypatch.setattr(cosmos, "settings", lambda: {"endpoint": "http://127.0.0.1:8341", "model": "cosmos3", "frames": 7})
     answer, who = cosmos.look("sys", frames, sheet, "what changed?")
     assert answer == "{}" and sent[0] == [c for c, _ in frames] and sent[1] == ["Frame sheet"] and "frame sheet" in who
+
+
+def test_a_new_scene_dissolves_in_and_picture_and_sound_stay_together(loop, monkeypatch):
+    class Cutter(Director):
+        def __call__(self, run, system, prompt):
+            n = len(autorl.committed(run))
+            return json.dumps(shot(BEATS[n], scene=f"Scene {n}", change=True))
+    monkeypatch.setattr(autorl, "ask_text", Cutter())
+    run = go(new_run(3))
+    assert [s["mode"] for s in run["segments"]] == ["text", "text", "text"]
+    film = HOME / run["film"]["path"]
+    assert abs(run["film"]["seconds"] - (3 - 2 * autorl.CUT_FADE)) < 0.06
+    assert abs(autorl.video_seconds(film) - autorl.qa.duration(film)) < 0.1

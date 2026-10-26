@@ -13,11 +13,11 @@ direction) becomes a film that keeps going until it is stopped. Each turn of the
   check     the QA gate (qa.py: the Whisper line check and the identity sheet) with the vision brain as its eyes
   watch     the vision brain (cosmos.py: NVIDIA Cosmos3-Edge by default) looks at eight frames of the segment in time
             order with the Whisper transcript and reports only what changed: the scene graph's delta, the state the
-            segment ends in, and continuity problems. Identity drift fails the segment like the QA gate does, and it is
-            rendered again at the next seed (``retakes``)
+            segment ends in, and continuity problems. Identity drift, confirmed by a second look at the face alone,
+            fails the segment like the QA gate does, and it is rendered again at the next seed (``retakes``)
   commit    the delta is merged into the scene graph; past ``COMPACT_AT`` events the oldest are folded into a chapter
   preview   every ``preview_every`` segments the film is joined again (``film.mp4``): a continuation drops the frame it
-            repeats (one-frame cross-fade, picture and sound together), a new scene dissolves in a quarter second
+            repeats and its sound cross-fades over the same 1/24 s, a new scene dissolves in a quarter second
 
 Pause stops the loop after the segment at work; resume picks it up where it stopped, a restart of the app too.
 Branch makes a new run that shares the first N segments and their memory and continues with new direction.
@@ -68,7 +68,7 @@ RECENT_EVENTS = 8
 SIMILAR_ACTION, SIMILAR_BEAT = 0.9, 0.85  # difflib ratios above which a new segment repeats an old one
 LIMIT = 500  # segments a run may have when it is asked for a number (0 runs until it is stopped)
 ACTIVE = ("running",)
-CONTINUE_FADE, CUT_FADE = 1 / FPS, 0.25  # the joins of the film: the repeated frame, and a dissolve on a new scene
+CONTINUE_FADE, CUT_FADE = 1 / FPS, 0.25  # the joins of the film: the repeated frame dropped, and a dissolve on a new scene
 
 DEFAULTS = {"style": "", "guidance": "", "preset": "small", "quality": "fh8", "width": None, "height": None, "seconds": 5,
             "loras": [], "segments": 6, "seed": 1, "max_scene_segments": 8, "beat_history": 12, "qa": True, "retakes": 1,
@@ -396,7 +396,7 @@ def watch_prompt(run: dict, seg: dict, view: dict, older: int, transcript: str) 
             + "\n\nReport ONLY what this segment adds or changes, as this JSON:\n"
             '{"add_nodes": [{"id": "<short unique id>", "type": "character|place|object", "label": "<3 words max>", "state": "<12 words max>"}], '
             '"update_nodes": [{"id": "<existing id>", "state": "<12 words max>"}], '
-            '"add_events": [{"t": "MM:SS", "subject": "<node id>", "action": "<verb phrase, 8 words max>", "target": "<node id or empty>", "place": "<node id>"}], '
+            '"add_events": [{"t": "<the time on the film\'s clock, like 01:07>", "subject": "<node id>", "action": "<verb phrase, 8 words max>", "target": "<node id or empty>", "place": "<node id>"}], '
             '"summary": "<25 words max: what actually happened>", '
             '"ending": "<40 words max: who and what is where on the final frame, poses, what they hold, the light>", '
             '"continuity": [{"kind": "identity|costume|object|place|other", "who": "<node id or name>", "note": "<15 words max>"}], '
@@ -404,14 +404,15 @@ def watch_prompt(run: dict, seg: dict, view: dict, older: int, transcript: str) 
             "Rules that matter:\n"
             "- A node is a person, a place or a thing that persists. Never a node for an action, a shot or a moment. The "
             "same person older or the same crowd elsewhere keeps its node: reuse the id and update its state.\n"
+            "- \"type\": character is only for people and animals; a vehicle, prop or effect is an object.\n"
             "- \"state\" replaces the old state: how it is NOW, twelve words.\n"
             "- At most TWO events, and only events that change the story: something gained or lost, a relationship turns, a "
             "place left for good, a goal met or broken. Glances, smiles, steps and camera moves are not events.\n"
-            "- \"continuity\" lists only real problems you can see: a face that changes into another person's, clothing that "
+            "- \"continuity\" lists only real problems you can see, never what stayed consistent: a face that changes into another person's, clothing that "
             "differs from the pinned look or from earlier frames, an object that vanishes or changes, a jump in place. Empty when none.\n"
             "- \"identity_drift\" is true only when a pinned character's face, age or build clearly becomes someone else's, "
             "or melts. Turning away, distance, motion blur or new lighting is not drift.\n"
-            "- Describe what the frames show, not what was asked for. Any list may be empty.")
+            "- Describe what the frames show, not what was asked for; a voice that is only heard is not a node. Any list may be empty.")
 
 
 def compact_prompt(events: list, chapters: list) -> str:
@@ -839,12 +840,14 @@ def work(run: dict, stop: threading.Event) -> None:
                 raise Stopped()
             if run.get("pause"):
                 run["state"], run["pause"] = "paused", False
-                publish(run)
+                if (run.get("film") or {}).get("segments") != len(committed(run)):
+                    publish(run)
                 say(run, f"Paused after segment {len(committed(run))}. Resume to carry on.")
                 return
             limit = int(run["settings"].get("segments") or 0)
             if limit and len(committed(run)) >= limit:
-                publish(run)
+                if (run.get("film") or {}).get("segments") != len(committed(run)):
+                    publish(run)
                 run["state"] = "done"
                 say(run, f"Done: {limit} segments, {run['film']['seconds'] if run.get('film') else 0:.1f} s of film.")
                 return
@@ -1159,6 +1162,28 @@ def check_watch(data: dict) -> str:
     return ""
 
 
+DRIFT_SYSTEM = "You compare people across frames of one video. Answer only with JSON."
+
+
+def confirm_drift(run: dict, frames: list, watched: dict) -> tuple[bool, dict]:
+    """A second, narrower look before identity drift fails a take: the first, middle and last frames, and one question
+    (is it the same person). Measured on the first real run: Cosmos3-Edge's scene-graph answer called a courier who
+    got on her vehicle "identity drift"; asked only about the face, hair and age it answers the question asked."""
+
+    names = "; ".join(f"{n}: {look}" for n, look in (run.get("cast") or {}).items()) or "the main character"
+    pick = [frames[0], frames[len(frames) // 2], frames[-1]]
+    prompt = (f"The three images are frames of one short video clip, in time order. The pinned looks: {names}.\n"
+              "Look only at the main person's FACE, HAIR, AGE and BUILD. Clothing, props, vehicles, pose, distance, motion blur "
+              "and lighting do not matter. Is it clearly the same person in all three frames where the person is visible?\n"
+              'Answer: {"same": true | false, "why": "<15 words max>"}')
+    try:
+        data, _ = ask_json(lambda text: ask_vision(DRIFT_SYSTEM, pick, Path(pick[-1][1]), text, run["settings"].get("brain") or {})[0],
+                           lambda d: "" if isinstance(d.get("same"), bool) else '"same" is true or false', prompt, "drift check")
+    except Failed as error:
+        return True, {"error": str(error)[:200]}  # the watcher's word stands when the check cannot be made
+    return not data["same"], {"same": data["same"], "why": clip_words(data.get("why"), 20)}
+
+
 def check(run: dict, seg: dict) -> None:
     """The take judged: the QA gate (Whisper line check, identity sheet) and the watcher (scene-graph delta,
     continuity). A take that fails either is rendered again at the next seed while ``retakes`` allow; the last take
@@ -1196,9 +1221,13 @@ def check(run: dict, seg: dict) -> None:
     watched, rejected = ask_json(asker, check_watch, prompt, "watcher")
     watched = {"delta": {k: watched.get(k) or [] for k in ("add_nodes", "update_nodes", "add_events")},
                "summary": clip_words(watched.get("summary"), 40), "ending": clip_words(watched.get("ending"), 60),
-               "continuity": [c for c in watched.get("continuity") or [] if isinstance(c, dict)][:6],
+               # a note that something stayed the same is not a problem (Cosmos3-Edge wrote such notes on the first real run)
+               "continuity": [c for c in watched.get("continuity") or [] if isinstance(c, dict)
+                              and not re.search(r"(?<!in)consistent|unchanged|remains the same", str(c.get("note") or ""), re.I)][:6],
                "identity_drift": watched["identity_drift"], "by": who[-1] if who else "", "rejected": rejected,
                "sheet": relative(sheet), "frames": [relative(p) for _, p in frames]}
+    if watched["identity_drift"]:
+        watched["identity_drift"], watched["drift_check"] = confirm_drift(run, frames, watched)
     write_json(folder / f"watch-take{take}.json", watched)
     reasons = []
     if report.get("passed") is False:
@@ -1219,7 +1248,7 @@ def commit(run: dict, seg: dict, watched: dict, transcript: str, reasons: list) 
     memory = memory_of(run)
     graph = merge(memory["graph"], watched["delta"], seg["index"])
     for event in graph["events"]:
-        if event.get("segment") == seg["index"] and not event.get("t"):
+        if event.get("segment") == seg["index"] and not re.fullmatch(r"\d{1,3}:\d{2}", str(event.get("t") or "")):
             event["t"] = mmss(float(seg["start"]))
     archive = memory.get("archive") or []
     if len(graph["events"]) > COMPACT_AT:
@@ -1239,6 +1268,18 @@ def commit(run: dict, seg: dict, watched: dict, transcript: str, reasons: list) 
 
 
 # ---------- the film ----------
+
+def video_seconds(clip: Path) -> float:
+    """The picture's own length: the container's is the longest stream's, and a film whose picture stopped early
+    still reports its sound's length there."""
+
+    done = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-count_packets", "-show_entries", "stream=nb_read_packets",
+                           "-of", "csv=p=0", str(clip)], capture_output=True, text=True, env=qa.ENV, timeout=120)
+    try:
+        return int(done.stdout.strip().split(",")[0]) / FPS
+    except ValueError:
+        return qa.duration(clip)
+
 
 def has_audio(clip: Path) -> bool:
     done = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", str(clip)],
@@ -1273,9 +1314,15 @@ def publish(run: dict) -> dict | None:
             graph.append(f"anullsrc=r=48000:cl=stereo,atrim=0:{length:.4f},aformat=sample_fmts=fltp[a{i}]")
     vlast, alast, total = "[v0]", "[a0]", lengths_[0]
     for i in range(1, len(parts)):
-        fade = CONTINUE_FADE if parts[i].get("mode") == "previous" else CUT_FADE
-        fade = min(fade, lengths_[i] / 2, total / 2)
-        graph.append(f"{vlast}[v{i}]xfade=transition=fade:duration={fade:.4f}:offset={total - fade:.4f}[vx{i}]")
+        if parts[i].get("mode") == "previous":
+            # a continuation opens on the frame the one before ends on: that frame is dropped, and the sound cross-fades
+            # over the same 1/24 s. (A one-frame xfade is not used: ffmpeg 6.1 drops the second clip with it.)
+            fade = CONTINUE_FADE
+            graph.append(f"[v{i}]trim=start_frame=1,setpts=PTS-STARTPTS[vt{i}]")
+            graph.append(f"{vlast}[vt{i}]concat=n=2:v=1:a=0[vx{i}]")
+        else:
+            fade = min(CUT_FADE, lengths_[i] / 2, total / 2)
+            graph.append(f"{vlast}[v{i}]xfade=transition=fade:duration={fade:.4f}:offset={total - fade:.4f}[vx{i}]")
         graph.append(f"{alast}[a{i}]acrossfade=d={fade:.4f}:c1=tri:c2=tri[ax{i}]")
         vlast, alast, total = f"[vx{i}]", f"[ax{i}]", total + lengths_[i] - fade
     target = folder / "film.mp4"
@@ -1288,6 +1335,6 @@ def publish(run: dict) -> dict | None:
         say(run, "The film could not be joined: " + (done.stderr or "").strip()[-300:])
         return None
     scratch.replace(target)
-    run["film"] = {"path": relative(target), "segments": len(parts), "seconds": round(qa.duration(target), 2), "at": slate.now()}
+    run["film"] = {"path": relative(target), "segments": len(parts), "seconds": round(video_seconds(target), 2), "at": slate.now()}
     save(run)
     return run["film"]
