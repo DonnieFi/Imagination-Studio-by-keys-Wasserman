@@ -202,6 +202,42 @@ def test_spark_video_sh_prepares_a_raw_prompt_and_leaves_a_finished_one():
     assert "overall_soundscape: Only ambient sound is heard." in text
 
 
+def test_a_prompt_given_on_the_command_line_keeps_its_last_newline_and_survives_a_failed_python():
+    """scripts/video.sh hands the prompt over as an argument. One that is left as written, also when it ends in a
+    newline, is not said to be changed; and a python3 that fails leaves the prompt as it was, not empty."""
+
+    folder = Path(tempfile.mkdtemp())
+    prefix = folder / "prefix"
+    (prefix / "venv/bin").mkdir(parents=True)
+    fake = prefix / "venv/bin/python"
+    calls = folder / "calls"
+    fake.write_text("#!/bin/bash\nprintf '%s\\0' \"$@\" > \"$CALLS\"\nexit 0\n")
+    fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
+
+    def render(prompt, path=None):
+        run = {k: v for k, v in os.environ.items()
+               if k not in ("REF_VIDEO_SOUND", "REF_PLAIN", "REF_IMAGES", "REF_VIDEOS", "REF_AUDIOS", "REF_COUNT", "PROMPT_FILE")}
+        run.update(PREFIX=str(prefix), STUDIO_GPU="0", ENGINE="fasth3", CALLS=str(calls))
+        if path:
+            run["PATH"] = path
+        done = subprocess.run(["bash", str(ROOT / "spark/video.sh"), prompt, str(folder / "out.mp4")],
+                              env=run, capture_output=True, text=True)
+        assert done.returncode == 0, done.stderr
+        args = calls.read_bytes().split(b"\0")
+        return done, args[args.index(b"--prompt") + 1].decode()
+
+    headed = "integrated_multimodal_description: [Shot 1] A hall.\n\noverall_soundscape: Rain.\n\nnon_diegetic_music: N/A\n"
+    done, sent = render(headed)
+    assert sent == headed and "no spoken line" not in done.stdout
+    # a python3 that fails: the prompt goes as written
+    broken = folder / "bin"
+    broken.mkdir()
+    (broken / "python3").write_text("#!/bin/bash\nexit 1\n")
+    (broken / "python3").chmod(0o755)
+    done, sent = render("A bike rides a dune.", path=f"{broken}:{os.environ['PATH']}")
+    assert sent == "A bike rides a dune." and "sent as written" in done.stderr
+
+
 if __name__ == "__main__":
     for name, test in list(globals().items()):
         if name.startswith("test_"):

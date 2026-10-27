@@ -18,16 +18,21 @@ ambient_prompt() {
     [ -f "$PROMPT_FILE" ] || { echo "no prompt file at $PROMPT_FILE" >&2; exit 2; }
     before="$(cat "$PROMPT_FILE")"
     # shellcheck disable=SC2086
-    after="$("$py" "$app/negation.py" $flags "$PROMPT_FILE")"
+    after="$("$py" "$app/negation.py" $flags "$PROMPT_FILE")" || { echo "[tensorfold] prompt: could not be prepared, sent as written" >&2; return 0; }
     [ "$after" = "$before" ] && return 0
     PROMPT="$after"
     PROMPT_FILE=""
   else
     before="$PROMPT"
+    # the x keeps a trailing newline, so a prompt that ends in one and is left as written stays equal to itself
     # shellcheck disable=SC2086
-    after="$(printf '%s' "$PROMPT" | "$py" "$app/negation.py" $flags)"
+    after="$(printf '%s' "$PROMPT" | "$py" "$app/negation.py" $flags && printf x)" || after=""
+    case "$after" in
+      *x) after="${after%x}" ;;
+      *) echo "[tensorfold] prompt: could not be prepared, sent as written" >&2; return 0 ;;
+    esac
     [ "$after" = "$before" ] && return 0
-    PROMPT="$after"
+    PROMPT="$(printf '%s' "$after")"  # a prepared prompt ends where its last field does, as compose() writes it
   fi
   echo "[tensorfold] prompt: no spoken line and no overall_soundscape heading, so the clip is told: Only ambient sound is heard."
 }
