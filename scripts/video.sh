@@ -12,10 +12,12 @@
 #   REF_IMAGES="face.jpg" REF_AUDIOS="voice.wav" bash scripts/video.sh "<Picture 1> speaks with the voice of <Audio 1>: ..." out.mp4
 #   X2=1 WIDTH=1344 HEIGHT=768 bash scripts/video.sh "a prompt" out.mp4   # generate at 672x384, decode at 2x
 #   ENGINE=fasth3 STEPS=8 bash scripts/video.sh "a prompt" out.mp4       # FastH3; see scripts/fast.sh
-# A prompt with no spoken <d> line and no overall_soundscape: heading is given one before the model
-# sees it ("Only ambient sound is heard."). The words already in the prompt stay. A prompt that already
-# has the heading, a <d> line, or REF_VIDEO_SOUND=1 is sent as written. On Linux this script hands over
-# to spark/video.sh, which does the same.
+# A text or first-frame prompt with no spoken <d> line and no overall_soundscape: heading is given one
+# before the model sees it ("Only ambient sound is heard."). The words already in the prompt stay, and a
+# leading "For the target video" paragraph stays ahead of that heading. A prompt that already has the
+# heading, a <d> line, a reference (REF_IMAGES, REF_VIDEOS, REF_AUDIOS, or a <Picture>, <Video> or <Audio>
+# tag), REF_PLAIN=1, or REF_VIDEO_SOUND=1 is sent as written. On Linux this script hands over to
+# spark/video.sh, which does the same.
 # Environment: PREFIX, H3_MODEL_DIR, ADAPTER (a file, or none), FIRST_FRAME (an image the clip starts from; it is
 # stretched onto the canvas, so match its aspect ratio), LAST_FRAME (an image the clip ends on: MiniMax H3's
 # first-and-last-frame mode, with or without FIRST_FRAME; beside a first frame it is fitted by a centre crop), WIDTH, HEIGHT, FRAMES (17n+5), SEED,

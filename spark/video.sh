@@ -26,9 +26,11 @@
 # DELIVERY_AUDIO_RATE=48000 delivers the sound as stereo AAC at that rate (ComfyUI's H3 decoder makes 32 kHz): a
 # resampling for an editor's timeline, the picture copied unchanged, not added detail. Unset, the clip keeps 32 kHz.
 # Not on the Spark: MiniMax H3 Turbo (ENGINE=h3, QUALITY) and the 2x decoder (X2, TWOK, QHD).
-# A prompt with no spoken <d> line and no overall_soundscape: heading is given one before the model
-# sees it ("Only ambient sound is heard."). The words already in the prompt stay. A prompt that already
-# has the heading, a <d> line, or REF_VIDEO_SOUND=1 is sent as written.
+# A text or first-frame prompt with no spoken <d> line and no overall_soundscape: heading is given one
+# before the model sees it ("Only ambient sound is heard."). The words already in the prompt stay, and a
+# leading "For the target video" paragraph stays ahead of that heading. A prompt that already has the
+# heading, a <d> line, a reference (REF_IMAGES, REF_VIDEOS, REF_AUDIOS, or a <Picture>, <Video> or <Audio>
+# tag), REF_PLAIN=1, or REF_VIDEO_SOUND=1 is sent as written.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091

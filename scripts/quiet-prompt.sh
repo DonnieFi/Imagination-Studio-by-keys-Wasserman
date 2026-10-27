@@ -1,26 +1,31 @@
-# A raw video prompt with no spoken line is given the Studio's own ambient line.
+# A raw text or first-frame prompt with no spoken line is given the Studio's own ambient line.
 # Sourced by scripts/video.sh and spark/video.sh. The user's sentences stay.
 # app/negation.py ensure_ambient holds the rule; this only applies it.
-# PROMPT and PROMPT_FILE are the script's own. REF_VIDEO_SOUND=1 leaves both as they are.
+# Left as written: a reference (REF_IMAGES, REF_VIDEOS, REF_AUDIOS, or a <Picture>, <Video> or <Audio>
+# tag), REF_PLAIN=1, and REF_VIDEO_SOUND=1. PROMPT and PROMPT_FILE are the script's own.
 
 ambient_prompt() {
   local app="$1"
-  local py extra="" before after
+  local py flags="" before after
   py="$(command -v python3 || true)"
   [ -n "$py" ] || { echo "python3 is needed to prepare a video prompt" >&2; exit 2; }
-  [ "${REF_VIDEO_SOUND:-0}" = 1 ] && extra="--video-sound"
+  [ "${REF_VIDEO_SOUND:-0}" = 1 ] && flags="$flags --video-sound"
+  [ "${REF_PLAIN:-0}" = 1 ] && flags="$flags --plain"
+  if [ "${REF_COUNT:-0}" != 0 ] || [ -n "${REF_IMAGES:-}${REF_VIDEOS:-}${REF_AUDIOS:-}" ]; then
+    flags="$flags --references"
+  fi
   if [ -n "${PROMPT_FILE:-}" ]; then
     [ -f "$PROMPT_FILE" ] || { echo "no prompt file at $PROMPT_FILE" >&2; exit 2; }
     before="$(cat "$PROMPT_FILE")"
     # shellcheck disable=SC2086
-    after="$("$py" "$app/negation.py" $extra "$PROMPT_FILE")"
+    after="$("$py" "$app/negation.py" $flags "$PROMPT_FILE")"
     [ "$after" = "$before" ] && return 0
     PROMPT="$after"
     PROMPT_FILE=""
   else
     before="$PROMPT"
     # shellcheck disable=SC2086
-    after="$(printf '%s' "$PROMPT" | "$py" "$app/negation.py" $extra)"
+    after="$(printf '%s' "$PROMPT" | "$py" "$app/negation.py" $flags)"
     [ "$after" = "$before" ] && return 0
     PROMPT="$after"
   fi

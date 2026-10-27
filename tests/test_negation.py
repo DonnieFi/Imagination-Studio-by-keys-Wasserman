@@ -112,6 +112,25 @@ def test_a_raw_prompt_gains_the_ambient_line_and_keeps_its_own_words():
                                     "overall_soundscape: Only ambient sound is heard.\n\nnon_diegetic_music: N/A\n")
 
 
+def test_a_reference_a_plain_prompt_and_a_first_frame_lead():
+    """The three cases from the review: a voice reference, REF_PLAIN=1, and the first-frame lead."""
+
+    voice = "Use <Picture 1> as the person. The person looks into the lens and says the line in the voice of <Audio 1>."
+    assert N.ensure_ambient(voice) == voice
+    assert N.ensure_ambient("A bike rides a dune.", references=True) == "A bike rides a dune."
+    assert N.ensure_ambient("<Video 1> with its person replaced.") == "<Video 1> with its person replaced."
+    plain = "A rider stands beside a motorbike."
+    assert N.ensure_ambient(plain, plain=True) == plain
+    lead = "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced."
+    scene = "A lone rider stands beside a motorbike. No cut, no logo."
+    out = N.ensure_ambient(f"{lead}\n\n{scene}")
+    assert out.startswith(lead + "\n\nintegrated_multimodal_description: [Shot 1] ")
+    assert scene in out and "overall_soundscape: Only ambient sound is heard." in out
+    assert out.index(lead) < out.index("integrated_multimodal_description:")
+    # the lead's own <Picture 1> is the opening frame, not a reason to skip the heading
+    assert "<Picture 1>" in out.split("integrated_multimodal_description:", 1)[0]
+
+
 def test_spark_video_sh_prepares_a_raw_prompt_and_leaves_a_finished_one():
     """spark/video.sh is what scripts/video.sh runs on Linux. A fake renderer records the prompt it was given."""
 
@@ -127,7 +146,8 @@ def test_spark_video_sh_prepares_a_raw_prompt_and_leaves_a_finished_one():
         calls.unlink(missing_ok=True)
         run = {**os.environ, "PREFIX": str(prefix), "STUDIO_GPU": "0", "ENGINE": "fasth3", "CALLS": str(calls),
                "PROMPT_FILE": str(prompt_file)}
-        run.pop("REF_VIDEO_SOUND", None)
+        for name in ("REF_VIDEO_SOUND", "REF_PLAIN", "REF_IMAGES", "REF_VIDEOS", "REF_AUDIOS", "REF_COUNT"):
+            run.pop(name, None)
         run.update(env)
         done = subprocess.run(["bash", str(ROOT / "spark/video.sh"), "", str(folder / "out.mp4")],
                               env=run, capture_output=True, text=True)
@@ -158,6 +178,28 @@ def test_spark_video_sh_prepares_a_raw_prompt_and_leaves_a_finished_one():
 
     _, args = render(raw, REF_VIDEO_SOUND="1")
     assert args[args.index(b"--prompt-file") + 1].decode() == str(raw)
+
+    # a reference with a voice, and REF_PLAIN=1, stay as written. The files only have to exist.
+    face, audio = folder / "face.png", folder / "voice.wav"
+    face.write_bytes(b"x")
+    audio.write_bytes(b"x")
+    nodes = folder / "nodes.txt"
+    nodes.write_text("Use <Picture 1> as the person. The person looks into the lens and says the line in the voice of <Audio 1>.\n")
+    done, args = render(nodes, REF_IMAGES=str(face), REF_AUDIOS=str(audio))
+    assert args[args.index(b"--prompt-file") + 1].decode() == str(nodes)
+    assert "Only ambient sound is heard" not in done.stdout
+    done, args = render(raw, REF_PLAIN="1")
+    assert args[args.index(b"--prompt-file") + 1].decode() == str(raw)
+    assert "Only ambient sound is heard" not in done.stdout
+
+    lead = "For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced."
+    opening = folder / "opening.txt"
+    opening.write_text(f"{lead}\n\nA lone rider stands beside a motorbike. No cut, no logo.\n")
+    _, args = render(opening)
+    text = args[args.index(b"--prompt") + 1].decode()
+    assert text.startswith(lead)
+    assert text.index(lead) < text.index("integrated_multimodal_description:")
+    assert "overall_soundscape: Only ambient sound is heard." in text
 
 
 if __name__ == "__main__":

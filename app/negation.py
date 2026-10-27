@@ -12,10 +12,12 @@ lines is told "Mouths stay closed." (where it has people) and "Only ambient soun
 locked, still camera" (server.py QUIET_*, slate.py MOVES). The older sentences ("Nobody speaks.", "No voices, no
 speech.") are still passed over in a prompt that has them, as are the control-layer lines of a motion reference.
 
-`ensure_ambient` is the other half, for a prompt that never went through the app. scripts/video.sh (and spark/video.sh,
-which serves that script on Linux) calls it before the model sees the text. A prompt with no spoken `<d>` line and no
-`overall_soundscape:` heading gains the Studio's own ambient line under that heading. A prompt that already has the
-heading, a spoken line, or a reference video's own soundtrack is returned as it was.
+`ensure_ambient` is the other half, for a text or first-frame prompt that never went through the app.
+scripts/video.sh (and spark/video.sh, which serves that script on Linux) calls it before the model sees the text.
+A prompt with no spoken `<d>` line and no `overall_soundscape:` heading gains the Studio's own ambient line under
+that heading. A MiniMax first-frame lead ("For the target video…") stays ahead of the heading, where `compose()`
+puts it. A prompt that already has the heading, a spoken line, a reference (`<Picture>`, `<Video>` or `<Audio>`,
+or reference files beside the job), `REF_PLAIN=1`, or a reference video's own soundtrack is returned as it was.
 """
 
 from __future__ import annotations
@@ -32,6 +34,9 @@ SPOKEN = re.compile(r"<d>.*?</d>", re.IGNORECASE | re.DOTALL)
 SOUNDSCAPE = re.compile(r"(?im)^[ \t]*overall_soundscape[ \t]*:")
 DESCRIPTION = re.compile(r"(?i)integrated_multimodal_description[ \t]*:")
 MUSIC = re.compile(r"(?im)^[ \t]*non_diegetic_music[ \t]*:")
+# a Ref2VA name in the prompt. The first-frame lead also says <Picture 1>; split_lead takes that paragraph off first.
+REFERENCE_TAG = re.compile(r"<(?:Picture|Video|Audio)\b", re.IGNORECASE)
+LEAD_SPLIT = re.compile(r"^(For the target video\b.*?)\n[ \t]*\n(.*)$", re.DOTALL)
 # what the Studio writes itself, about the sound track and the control layers of a motion reference
 OWN = ("Nobody speaks.", "No voices, no speech.", "No speech after the spoken lines.", "No speech.", "non_diegetic_music: N/A",
        "its look is not rendered", "is not rendered", "are not rendered", "These colours are labels only, not the look of the target video.",
@@ -101,23 +106,43 @@ def check_fields(fields: dict) -> dict:
     return {"negations": found[:12], "reason": REASON if found else ""}
 
 
-def ensure_ambient(prompt: str, video_sound: bool = False) -> str:
-    """A raw prompt with no spoken line and no soundscape heading, plus the Studio's own ambient line.
+def split_lead(prompt: str) -> tuple[str, str]:
+    """MiniMax's first-frame preamble, and the prompt after it.
 
-    The sentences already in ``prompt`` stay. Returned unchanged when ``prompt`` already has an
-    ``overall_soundscape:`` heading, a ``<d>`` spoken line, or ``video_sound`` (a reference video's own
-    soundtrack, which may itself hold speech). A prompt ``compose`` wrote already has the heading, so it
-    passes through as it was queued.
+    The preamble is the paragraph that starts "For the target video" and is set off by a blank line, as
+    ``scripts/studio.sh`` writes it. It names ``<Picture 1>`` for the opening frame, which is not a Ref2VA
+    reference. A prompt with no such paragraph comes back with an empty lead and its own text.
     """
 
-    if video_sound or SPOKEN.search(prompt) or SOUNDSCAPE.search(prompt):
+    match = LEAD_SPLIT.match(prompt.strip())
+    if not match:
+        return "", prompt
+    return match.group(1).strip(), match.group(2)
+
+
+def ensure_ambient(prompt: str, video_sound: bool = False, references: bool = False, plain: bool = False) -> str:
+    """A raw text or first-frame prompt with no spoken line, plus the Studio's own ambient line.
+
+    The sentences already in ``prompt`` stay. Returned unchanged when ``prompt`` already has an
+    ``overall_soundscape:`` heading, a ``<d>`` spoken line, a reference tag, ``references`` (reference
+    files were passed), ``plain`` (``REF_PLAIN=1``: the prompt goes as written), or ``video_sound`` (a
+    reference video's own soundtrack, which may itself hold speech). A prompt ``compose`` wrote already
+    has the heading, so it passes through as it was queued. A first-frame lead stays ahead of the heading.
+    """
+
+    if video_sound or references or plain or SPOKEN.search(prompt) or SOUNDSCAPE.search(prompt):
         return prompt
-    body = prompt.strip()
+    lead, rest = split_lead(prompt)
+    if REFERENCE_TAG.search(rest):
+        return prompt
+    body = rest.strip()
     if not DESCRIPTION.search(body):
         body = f"integrated_multimodal_description: [Shot 1] {body}".rstrip()
     if MUSIC.search(body):
-        return f"{body}\n\noverall_soundscape: {QUIET_SOUND}\n"
-    return f"{body}\n\noverall_soundscape: {QUIET_SOUND}\n\nnon_diegetic_music: N/A\n"
+        prepared = f"{body}\n\noverall_soundscape: {QUIET_SOUND}\n"
+    else:
+        prepared = f"{body}\n\noverall_soundscape: {QUIET_SOUND}\n\nnon_diegetic_music: N/A\n"
+    return f"{lead}\n\n{prepared}" if lead else prepared
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -127,10 +152,12 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Add the Studio's ambient soundscape to a raw video prompt.")
     parser.add_argument("--video-sound", action="store_true", help="a reference video's own soundtrack is in use")
+    parser.add_argument("--references", action="store_true", help="REF_IMAGES, REF_VIDEOS or REF_AUDIOS was set")
+    parser.add_argument("--plain", action="store_true", help="REF_PLAIN=1: the prompt goes to the model as written")
     parser.add_argument("prompt_file", nargs="?")
     args = parser.parse_args(argv)
     text = Path(args.prompt_file).read_text(encoding="utf-8") if args.prompt_file else sys.stdin.read()
-    sys.stdout.write(ensure_ambient(text, video_sound=args.video_sound))
+    sys.stdout.write(ensure_ambient(text, video_sound=args.video_sound, references=args.references, plain=args.plain))
     return 0
 
 
